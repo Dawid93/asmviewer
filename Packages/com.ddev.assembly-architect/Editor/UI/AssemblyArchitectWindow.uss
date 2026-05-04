@@ -1,0 +1,52 @@
+.aa-root {
+  flex-grow: 1;
+  flex-direction: column;
+}
+
+.aa-body {
+  flex-grow: 1;
+}
+
+.aa-toolbar-host {
+  height: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+  flex-direction: row;
+}
+
+.aa-main-split-view {
+  flex-grow: 1;
+}
+
+.aa-graph-host {
+  flex-grow: 1;
+  min-width: 400px;
+  background-color: #1e1e1e;
+}
+
+.aa-root.light .aa-graph-host {
+  background-color: #f2f3f5;
+}
+
+.aa-inspector-host {
+  width: 320px;
+  padding: 8px;
+  border-left-width: 1px;
+  border-left-color: #3a3a3a;
+}
+
+.aa-root.light .aa-inspector-host {
+  border-left-color: #c8c8c8;
+}
+
+.aa-status-bar {
+  height: 22px;
+  border-top-width: 1px;
+  border-top-color: #3a3a3a;
+  padding-left: 8px;
+  justify-content: center;
+}
+
+.aa-root.light .aa-status-bar {
+  border-top-color: #c8c8c8;
+}

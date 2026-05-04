@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+  <uie:Toolbar name="assembly-architect-toolbar" class="aa-toolbar">
+    <ui:VisualElement name="left-controls" class="aa-toolbar-group" />
+    <ui:VisualElement name="toolbar-spacer" class="aa-toolbar-spacer" />
+    <ui:VisualElement name="right-controls" class="aa-toolbar-group" />
+  </uie:Toolbar>
+</ui:UXML>

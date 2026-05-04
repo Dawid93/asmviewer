@@ -1,0 +1,18 @@
+.aa-asmdef-graph-view {
+  flex-grow: 1;
+  background-color: #1e1e1e;
+}
+
+.aa-asmdef-edge .edge-control {
+  --edge-width: 2px;
+  --edge-color: #808080;
+}
+
+.aa-edge-cycle .edge-control {
+  --edge-width: 2px;
+  --edge-color: #ff8c42;
+}
+
+.aa-edge-filtered {
+  opacity: 0.2;
+}

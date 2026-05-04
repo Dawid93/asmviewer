@@ -1,0 +1,79 @@
+.aa-asmdef-node {
+  background-color: #2d2d30;
+  border-left-width: 4px;
+  border-left-color: #4ea1ff;
+  min-width: 220px;
+}
+
+.aa-origin-project {
+  border-left-color: #4ea1ff;
+}
+
+.aa-origin-project .aa-origin-icon {
+  background-color: #4ea1ff;
+}
+
+.aa-origin-package-embedded {
+  border-left-color: #a06cff;
+}
+
+.aa-origin-package-embedded .aa-origin-icon {
+  background-color: #a06cff;
+}
+
+.aa-origin-package-registry {
+  border-left-color: #888888;
+}
+
+.aa-origin-package-registry .aa-origin-icon {
+  background-color: #888888;
+}
+
+.aa-origin-builtin {
+  border-left-color: #555555;
+  border-top-width: 1px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+  border-top-color: #555555;
+  border-right-color: #555555;
+  border-bottom-color: #555555;
+}
+
+.aa-origin-builtin .aa-origin-icon {
+  background-color: #555555;
+}
+
+.aa-origin-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  margin-right: 6px;
+  align-self: center;
+}
+
+.aa-node-subtitle {
+  font-size: 10px;
+  color: #b8b8b8;
+  margin-left: 12px;
+  margin-right: 12px;
+  margin-bottom: 4px;
+}
+
+.aa-node-port {
+  width: 12px;
+  height: 12px;
+}
+
+.aa-state-cycle {
+  border-left-color: #ff8c42;
+  -unity-text-outline-color: #ff8c42;
+  -unity-text-outline-width: 1px;
+}
+
+.aa-state-broken {
+  border-left-color: #ff4d4d;
+}
+
+.aa-state-filtered {
+  opacity: 0.25;
+}

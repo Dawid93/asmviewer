@@ -10,6 +10,8 @@ namespace AssemblyArchitect.Editor.Core
     /// </summary>
     public sealed class DependencyGraphModel
     {
+        public static readonly DependencyGraphModel Empty = Build(Array.Empty<AsmDefData>());
+
         /// <summary>All nodes, sorted ascending by <see cref="AsmDefNodeModel.Name"/> (case-insensitive).</summary>
         public IReadOnlyList<AsmDefNodeModel> Nodes { get; }
 

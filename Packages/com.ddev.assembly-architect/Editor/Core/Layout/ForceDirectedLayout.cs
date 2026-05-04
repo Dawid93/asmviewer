@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
+using Random = System.Random;
 
 namespace AssemblyArchitect.Editor.Core.Layout
 {

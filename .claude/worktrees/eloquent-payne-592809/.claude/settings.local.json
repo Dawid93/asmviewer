@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" status --short)",
-      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" status --ignored -u)"
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" status --ignored -u)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Infrastructure/)",
+      "Bash(git -C C:/Users/ddawi/Projects/AsmViewer commit -m ' *)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Infrastructure/AsmDefWriter.cs Packages/com.ddev.assembly-architect/Editor/Infrastructure/AsmDefJsonSerializer.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/CycleDetector.cs Packages/com.ddev.assembly-architect/Tests/Editor/CycleDetectorTests.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/Layout/ Packages/com.ddev.assembly-architect/Tests/Editor/LayoutTests.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add \"Packages/com.ddev.assembly-architect/\" \"Packages/packages-lock.json\")"
     ]
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "com.ddev.assembly-architect",
+  "version": "0.1.0",
+  "displayName": "Assembly Architect",
+  "description": "Assembly Architect is an editor tool for visualizing and managing Unity assembly definitions (asmdef) as an interactive graph. It lets you inspect dependencies, detect cycles, and reason about your project's modular architecture at a glance.",
+  "unity": "6000.0",
+  "author": {
+    "name": "ddev"
+  },
+  "keywords": [
+    "assembly",
+    "asmdef",
+    "graph",
+    "architecture",
+    "editor"
+  ],
+  "category": "Editor"
+}

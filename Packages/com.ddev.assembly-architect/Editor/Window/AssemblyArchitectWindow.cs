@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using AssemblyArchitect.Editor.Commands;
 using AssemblyArchitect.Editor.Core;
 using AssemblyArchitect.Editor.Core.Layout;
 using AssemblyArchitect.Editor.Graph;
 using AssemblyArchitect.Editor.Infrastructure;
+using AssemblyArchitect.Editor.Window.Dialogs;
+using AssemblyArchitect.Editor.Window.Inspector;
 using AssemblyArchitect.Editor.Window.Toolbar;
 using UnityEditor;
 using UnityEngine;
@@ -29,6 +32,10 @@ namespace AssemblyArchitect.Editor.Window
         private AsmDefRepository repo;
         private AsmDefGraphView graphView;
         private AssemblyArchitectToolbar toolbar;
+        private AsmDefInspectorPanel inspector;
+        private AddReferenceCommand addReferenceCommand;
+        private RemoveReferenceCommand removeReferenceCommand;
+        private CreateAsmDefCommand createAsmDefCommand;
         private DependencyGraphModel model = DependencyGraphModel.Empty;
         private LayoutKind currentLayout = LayoutKind.Hierarchical;
         private readonly Dictionary<string, Vector2> positions = new Dictionary<string, Vector2>(System.StringComparer.Ordinal);
@@ -58,6 +65,10 @@ namespace AssemblyArchitect.Editor.Window
 
             currentLayout = toolbarLayoutKind;
             repo = AsmDefRepository.Default;
+            var writer = new AsmDefWriter();
+            addReferenceCommand = new AddReferenceCommand(repo, writer);
+            removeReferenceCommand = new RemoveReferenceCommand(repo, writer);
+            createAsmDefCommand = new CreateAsmDefCommand(repo, writer, SetPendingPosition);
             repo.Changed += ScheduleRebuild;
             rebuildDebouncer = new Debouncer(100, Rebuild);
             EditorApplication.delayCall += Rebuild;
@@ -91,6 +102,7 @@ namespace AssemblyArchitect.Editor.Window
             RestoreInspectorPaneDimension();
             AttachToolbar();
             AttachGraphView();
+            AttachInspector();
 
             splitView?.RegisterCallback<GeometryChangedEvent>(OnSplitGeometryChanged);
             Rebuild();
@@ -171,6 +183,17 @@ namespace AssemblyArchitect.Editor.Window
             graphView.EdgeAddRequested += OnEdgeAddRequested;
             graphView.EdgeRemoveRequested += OnEdgeRemoveRequested;
             graphView.NodePositionChanged += OnNodePositionChanged;
+            graphView.CreateAsmDefRequested += OnCreateAsmDefRequested;
+        }
+
+        private void AttachInspector()
+        {
+            if (inspectorHost == null)
+                return;
+
+            inspectorHost.Clear();
+            inspector = new AsmDefInspectorPanel(repo, new AsmDefWriter());
+            inspectorHost.Add(inspector);
         }
 
         private void SaveToolbarState()
@@ -370,20 +393,39 @@ namespace AssemblyArchitect.Editor.Window
         private void OnNodeSelected(string nodeId)
         {
             lastSelectedNodeId = nodeId ?? string.Empty;
-            // Inspector panel arrives in Task 4.4.
+            inspector?.ShowFor(lastSelectedNodeId);
         }
 
         private void OnEdgeAddRequested(string sourceId, string targetId)
         {
-            // AddReferenceCommand arrives in Task 4.1.
+            addReferenceCommand?.Execute(sourceId, targetId);
         }
 
-        private void OnEdgeRemoveRequested(string sourceId, string targetId)
+        private void OnEdgeRemoveRequested(string sourceId, string targetId, bool skipConfirmation)
         {
-            // RemoveReferenceCommand arrives in Task 4.2.
+            removeReferenceCommand?.Execute(sourceId, targetId, skipConfirmation);
         }
 
         private void OnNodePositionChanged(string id, Vector2 position)
+        {
+            if (string.IsNullOrEmpty(id))
+                return;
+
+            positions[id] = position;
+            userPositionIds.Add(id);
+        }
+
+        private void OnCreateAsmDefRequested(Vector2 graphPosition, string autoReferenceSourceId, Rect activatorRect)
+        {
+            CreateAsmDefPopup.Show(
+                activatorRect,
+                repo,
+                createAsmDefCommand,
+                graphPosition,
+                autoReferenceSourceId);
+        }
+
+        private void SetPendingPosition(string id, Vector2 position)
         {
             if (string.IsNullOrEmpty(id))
                 return;

@@ -17,6 +17,8 @@ namespace AssemblyArchitect.Editor.Graph
         private readonly Dictionary<string, AsmDefNode> nodesById = new Dictionary<string, AsmDefNode>(StringComparer.Ordinal);
         private readonly Dictionary<string, Vector2> pendingPositions = new Dictionary<string, Vector2>(StringComparer.Ordinal);
         private readonly Debouncer positionDebouncer;
+        private Vector2 lastContextGraphPosition;
+        private bool skipNextRemoveConfirmation;
 
         public AsmDefGraphView()
         {
@@ -37,14 +39,16 @@ namespace AssemblyArchitect.Editor.Graph
 
             graphViewChanged = OnGraphViewChanged;
             RegisterCallback<MouseUpEvent>(_ => NotifySelectionChanged());
+            RegisterCallback<KeyDownEvent>(OnKeyDown);
             RegisterCallback<KeyUpEvent>(_ => NotifySelectionChanged());
             positionDebouncer = new Debouncer(500, FlushPendingPositions);
         }
 
         public event Action<string> NodeSelected;
         public event Action<string, string> EdgeAddRequested;
-        public event Action<string, string> EdgeRemoveRequested;
+        public event Action<string, string, bool> EdgeRemoveRequested;
         public event Action<string, Vector2> NodePositionChanged;
+        public event Action<Vector2, string, Rect> CreateAsmDefRequested;
 
         public void Populate(
             DependencyGraphModel model,
@@ -143,6 +147,33 @@ namespace AssemblyArchitect.Editor.Graph
             return compatible;
         }
 
+        public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
+        {
+            base.BuildContextualMenu(evt);
+
+            var target = evt.target as VisualElement;
+            var node = target?.GetFirstAncestorOfType<AsmDefNode>();
+            if (node != null)
+            {
+                evt.menu.AppendSeparator();
+                evt.menu.AppendAction("Show in Project", _ => PingAsset(node.AssetPath));
+                evt.menu.AppendAction("Open .asmdef in External Editor", _ => OpenAsset(node.AssetPath));
+                evt.menu.AppendAction(
+                    "Delete Assembly Definition",
+                    _ => Debug.LogWarning("[AssemblyArchitect] Delete Assembly Definition is not implemented yet."));
+                return;
+            }
+
+            lastContextGraphPosition = ToGraphPosition(evt.localMousePosition);
+            evt.menu.AppendSeparator();
+            evt.menu.AppendAction(
+                "Create Assembly Definition...",
+                _ => CreateAsmDefRequested?.Invoke(
+                    lastContextGraphPosition,
+                    GetSingleSelectedNodeId(),
+                    new Rect(GUIUtility.GUIToScreenPoint(evt.mousePosition), Vector2.zero)));
+        }
+
         private void NotifySelectionChanged()
         {
             var selectedNodes = selection.OfType<AsmDefNode>().ToList();
@@ -177,6 +208,7 @@ namespace AssemblyArchitect.Editor.Graph
                 }
 
                 change.elementsToRemove = filtered;
+                skipNextRemoveConfirmation = false;
             }
 
             if (change.movedElements != null && change.movedElements.Count > 0)
@@ -210,7 +242,7 @@ namespace AssemblyArchitect.Editor.Graph
                 return;
             }
 
-            EdgeRemoveRequested?.Invoke(sourceNode.AsmDefId, targetNode.AsmDefId);
+            EdgeRemoveRequested?.Invoke(sourceNode.AsmDefId, targetNode.AsmDefId, skipNextRemoveConfirmation);
         }
 
         private void FlushPendingPositions()
@@ -223,6 +255,37 @@ namespace AssemblyArchitect.Editor.Graph
 
             foreach (var entry in snapshot)
                 NodePositionChanged?.Invoke(entry.Key, entry.Value);
+        }
+
+        private Vector2 ToGraphPosition(Vector2 localPosition)
+        {
+            return this.ChangeCoordinatesTo(contentViewContainer, localPosition);
+        }
+
+        private string GetSingleSelectedNodeId()
+        {
+            var selectedNodes = selection.OfType<AsmDefNode>().ToList();
+            return selectedNodes.Count == 1 ? selectedNodes[0].AsmDefId : string.Empty;
+        }
+
+        private static void PingAsset(string assetPath)
+        {
+            var asset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+            if (asset != null)
+                EditorGUIUtility.PingObject(asset);
+        }
+
+        private static void OpenAsset(string assetPath)
+        {
+            var asset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+            if (asset != null)
+                AssetDatabase.OpenAsset(asset);
+        }
+
+        private void OnKeyDown(KeyDownEvent evt)
+        {
+            if (evt.keyCode == KeyCode.Delete || evt.keyCode == KeyCode.Backspace)
+                skipNextRemoveConfirmation = evt.shiftKey;
         }
     }
 }

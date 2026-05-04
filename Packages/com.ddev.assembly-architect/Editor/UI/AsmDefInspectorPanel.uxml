@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:VisualElement name="root" class="aa-inspector-root">
+    <ui:Label name="empty-label" text="No assembly selected" />
+    <ui:ScrollView name="content" class="aa-inspector-content" />
+  </ui:VisualElement>
+</ui:UXML>

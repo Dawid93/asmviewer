@@ -25,6 +25,7 @@ namespace AssemblyArchitect.Editor.Graph
             if (model == null) throw new ArgumentNullException(nameof(model));
 
             AsmDefId = model.Id;
+            AssetPath = model.AssetPath;
             title = model.Name;
             userData = model.Id;
 
@@ -51,6 +52,7 @@ namespace AssemblyArchitect.Editor.Graph
         }
 
         public string AsmDefId { get; }
+        public string AssetPath { get; }
         public Port InputPort { get; }
         public Port OutputPort { get; }
 

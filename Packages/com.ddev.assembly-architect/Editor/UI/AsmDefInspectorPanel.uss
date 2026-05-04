@@ -1,0 +1,31 @@
+.aa-inspector-panel,
+.aa-inspector-root,
+.aa-inspector-content {
+  flex-grow: 1;
+}
+
+.aa-inspector-header {
+  margin-bottom: 8px;
+}
+
+.aa-inspector-title {
+  -unity-font-style: bold;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.aa-origin-badge {
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.aa-readonly-note {
+  color: #ffb86c;
+  margin-bottom: 6px;
+}
+
+.aa-list-title {
+  -unity-font-style: bold;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}

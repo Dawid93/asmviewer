@@ -121,13 +121,7 @@ namespace AssemblyArchitect.Editor.Core
                 }
             }
 
-            private bool HasSelfEdge(string id)
-            {
-                if (!_graph.Outgoing.TryGetValue(id, out var neighbors)) return false;
-                foreach (var n in neighbors)
-                    if (n == id) return true;
-                return false;
-            }
+            private bool HasSelfEdge(string id) => _graph.HasSelfReference(id);
         }
     }
 }

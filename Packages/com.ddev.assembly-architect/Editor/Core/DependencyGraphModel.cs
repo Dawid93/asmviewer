@@ -28,21 +28,28 @@ namespace AssemblyArchitect.Editor.Core
         /// <summary>Maps a target node id to the ids of all assemblies that reference it.</summary>
         public IReadOnlyDictionary<string, IReadOnlyList<string>> Incoming { get; }
 
+        private readonly HashSet<string> _selfReferenceIds;
+
         private DependencyGraphModel(
             IReadOnlyList<AsmDefNodeModel> nodes,
             IReadOnlyList<AsmDefEdgeModel> edges,
             IReadOnlyList<MissingReferenceInfo> missing,
             IReadOnlyDictionary<string, AsmDefNodeModel> nodesById,
             IReadOnlyDictionary<string, IReadOnlyList<string>> outgoing,
-            IReadOnlyDictionary<string, IReadOnlyList<string>> incoming)
+            IReadOnlyDictionary<string, IReadOnlyList<string>> incoming,
+            HashSet<string> selfReferenceIds)
         {
-            Nodes            = nodes;
-            Edges            = edges;
+            Nodes             = nodes;
+            Edges             = edges;
             MissingReferences = missing;
-            NodesById        = nodesById;
-            Outgoing         = outgoing;
-            Incoming         = incoming;
+            NodesById         = nodesById;
+            Outgoing          = outgoing;
+            Incoming          = incoming;
+            _selfReferenceIds = selfReferenceIds;
         }
+
+        /// <summary>Returns <c>true</c> if the node with <paramref name="id"/> has a self-reference in its asmdef.</summary>
+        public bool HasSelfReference(string id) => _selfReferenceIds.Contains(id);
 
         /// <summary>Returns the node with <paramref name="id"/>, or <c>false</c> if not found.</summary>
         public bool TryGetNode(string id, out AsmDefNodeModel node) => NodesById.TryGetValue(id ?? string.Empty, out node);
@@ -75,10 +82,11 @@ namespace AssemblyArchitect.Editor.Core
             nodeList.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
             // Build edges and missing references
-            var edgeList    = new List<AsmDefEdgeModel>();
-            var missingList = new List<MissingReferenceInfo>();
-            var outRaw      = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            var inRaw       = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            var edgeList        = new List<AsmDefEdgeModel>();
+            var missingList     = new List<MissingReferenceInfo>();
+            var outRaw          = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            var inRaw           = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            var selfRefIds      = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var d in data)
             {
@@ -110,9 +118,12 @@ namespace AssemblyArchitect.Editor.Core
 
                     var targetId = resolved.StableId;
 
-                    // Drop self-references silently
+                    // Drop self-references from edges but record them for cycle detection
                     if (string.Equals(targetId, sourceId, StringComparison.Ordinal))
+                    {
+                        selfRefIds.Add(sourceId);
                         continue;
+                    }
 
                     edgeList.Add(new AsmDefEdgeModel(sourceId, targetId));
 
@@ -151,7 +162,8 @@ namespace AssemblyArchitect.Editor.Core
                 new ReadOnlyCollection<MissingReferenceInfo>(missingList),
                 new ReadOnlyDictionary<string, AsmDefNodeModel>(nodesById),
                 new ReadOnlyDictionary<string, IReadOnlyList<string>>(outgoing),
-                new ReadOnlyDictionary<string, IReadOnlyList<string>>(incoming));
+                new ReadOnlyDictionary<string, IReadOnlyList<string>>(incoming),
+                selfRefIds);
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AssemblyArchitect.Editor.Core;
+using AssemblyArchitect.Editor.Settings;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
@@ -15,8 +16,16 @@ namespace AssemblyArchitect.Editor.Graph
         private static readonly Vector2 DefaultNodeSize = new Vector2(220f, 80f);
 
         private readonly Dictionary<string, AsmDefNode> nodesById = new Dictionary<string, AsmDefNode>(StringComparer.Ordinal);
+        private readonly List<AsmDefEdge> asmDefEdges = new List<AsmDefEdge>();
+        private readonly HashSet<string> brokenNodeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> cycleNodeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> cycleEdgeKeys = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> originHiddenNodeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> searchFilteredNodeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<string, Vector2> pendingPositions = new Dictionary<string, Vector2>(StringComparer.Ordinal);
         private readonly Debouncer positionDebouncer;
+        private readonly MiniMap miniMap;
+        private GraphFilter filter;
         private Vector2 lastContextGraphPosition;
         private bool skipNextRemoveConfirmation;
 
@@ -33,6 +42,11 @@ namespace AssemblyArchitect.Editor.Graph
             Insert(0, grid);
             grid.StretchToParentSize();
 
+            miniMap = new MiniMap { anchored = true };
+            miniMap.AddToClassList("aa-minimap");
+            miniMap.SetPosition(new Rect(15f, 15f, 200f, 160f));
+            Add(miniMap);
+
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
             if (styleSheet != null)
                 styleSheets.Add(styleSheet);
@@ -42,6 +56,8 @@ namespace AssemblyArchitect.Editor.Graph
             RegisterCallback<KeyDownEvent>(OnKeyDown);
             RegisterCallback<KeyUpEvent>(_ => NotifySelectionChanged());
             positionDebouncer = new Debouncer(500, FlushPendingPositions);
+            AssemblyArchitectSettings.Changed += RefreshSettings;
+            RegisterCallback<DetachFromPanelEvent>(_ => AssemblyArchitectSettings.Changed -= RefreshSettings);
         }
 
         public event Action<string> NodeSelected;
@@ -60,9 +76,7 @@ namespace AssemblyArchitect.Editor.Graph
                 model = DependencyGraphModel.Empty;
 
             positions = positions ?? new Dictionary<string, Vector2>();
-            var brokenNodeIds = new HashSet<string>(
-                model.MissingReferences.Select(reference => reference.SourceId),
-                StringComparer.Ordinal);
+            brokenNodeIds.UnionWith(model.MissingReferences.Select(reference => reference.SourceId));
 
             for (var index = 0; index < model.Nodes.Count; index++)
             {
@@ -73,9 +87,6 @@ namespace AssemblyArchitect.Editor.Graph
                     : new Vector2(50f * index, 50f * index);
 
                 node.SetPosition(new Rect(position, DefaultNodeSize));
-                if (brokenNodeIds.Contains(nodeModel.Id))
-                    node.ApplyState(NodeVisualState.Broken);
-
                 nodesById[nodeModel.Id] = node;
                 AddElement(node);
             }
@@ -90,11 +101,14 @@ namespace AssemblyArchitect.Editor.Graph
 
                 var edge = new AsmDefEdge
                 {
+                    SourceId = edgeModel.SourceId,
+                    TargetId = edgeModel.TargetId,
                     output = sourceNode.OutputPort,
                     input = targetNode.InputPort,
                 };
                 edge.output.Connect(edge);
                 edge.input.Connect(edge);
+                asmDefEdges.Add(edge);
                 AddElement(edge);
             }
 
@@ -103,14 +117,24 @@ namespace AssemblyArchitect.Editor.Graph
                 node.RefreshExpandedState();
                 node.RefreshPorts();
             }
+
+            ApplyVisualStates();
         }
 
         public new void Clear()
         {
             pendingPositions.Clear();
             nodesById.Clear();
+            asmDefEdges.Clear();
+            brokenNodeIds.Clear();
+            cycleNodeIds.Clear();
+            cycleEdgeKeys.Clear();
+            originHiddenNodeIds.Clear();
+            searchFilteredNodeIds.Clear();
 
-            var elements = graphElements.ToList();
+            var elements = graphElements
+                .Where(element => element is AsmDefNode || element is AsmDefEdge)
+                .ToList();
             foreach (var element in elements)
                 RemoveElement(element);
         }
@@ -147,6 +171,47 @@ namespace AssemblyArchitect.Editor.Graph
             return compatible;
         }
 
+        internal AsmDefNode GetNodeById(string id)
+        {
+            nodesById.TryGetValue(id ?? string.Empty, out var node);
+            return node;
+        }
+
+        public void ApplyCycleHighlight(IReadOnlyList<IReadOnlyList<string>> cycles)
+        {
+            cycleNodeIds.Clear();
+            cycleEdgeKeys.Clear();
+
+            if (cycles != null)
+            {
+                foreach (var cycle in cycles)
+                {
+                    var members = new HashSet<string>(cycle, StringComparer.Ordinal);
+                    foreach (var id in members)
+                        cycleNodeIds.Add(id);
+
+                    foreach (var edge in asmDefEdges)
+                    {
+                        if (members.Contains(edge.SourceId) && members.Contains(edge.TargetId))
+                            cycleEdgeKeys.Add(GetEdgeKey(edge.SourceId, edge.TargetId));
+                    }
+                }
+            }
+
+            ApplyVisualStates();
+        }
+
+        public void ApplyFilter(GraphFilter filter)
+        {
+            this.filter = filter;
+            ApplyVisualStates();
+        }
+
+        public void SetMiniMapVisible(bool visible)
+        {
+            miniMap.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
         public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
         {
             base.BuildContextualMenu(evt);
@@ -178,6 +243,80 @@ namespace AssemblyArchitect.Editor.Graph
         {
             var selectedNodes = selection.OfType<AsmDefNode>().ToList();
             NodeSelected?.Invoke(selectedNodes.Count == 1 ? selectedNodes[0].AsmDefId : string.Empty);
+        }
+
+        private void ApplyVisualStates()
+        {
+            originHiddenNodeIds.Clear();
+            searchFilteredNodeIds.Clear();
+
+            foreach (var pair in nodesById)
+            {
+                var node = pair.Value;
+                var originVisible = PassesOriginFilter(node.Origin);
+                var searchVisible = PassesSearchFilter(node.SearchName);
+                node.style.display = originVisible ? DisplayStyle.Flex : DisplayStyle.None;
+
+                if (!originVisible)
+                    originHiddenNodeIds.Add(pair.Key);
+                else if (!searchVisible)
+                    searchFilteredNodeIds.Add(pair.Key);
+
+                var state = NodeVisualState.None;
+                if (cycleNodeIds.Contains(pair.Key))
+                    state |= NodeVisualState.InCycle;
+                if (brokenNodeIds.Contains(pair.Key))
+                    state |= NodeVisualState.Broken;
+                if (originVisible && !searchVisible)
+                    state |= NodeVisualState.Filtered;
+
+                node.ApplyState(state);
+            }
+
+            foreach (var edge in asmDefEdges)
+            {
+                var hidden = originHiddenNodeIds.Contains(edge.SourceId) || originHiddenNodeIds.Contains(edge.TargetId);
+                edge.style.display = hidden ? DisplayStyle.None : DisplayStyle.Flex;
+
+                var state = EdgeVisualState.None;
+                if (cycleEdgeKeys.Contains(GetEdgeKey(edge.SourceId, edge.TargetId)))
+                    state |= EdgeVisualState.InCycle;
+                if (!hidden && (searchFilteredNodeIds.Contains(edge.SourceId) || searchFilteredNodeIds.Contains(edge.TargetId)))
+                    state |= EdgeVisualState.Filtered;
+                edge.ApplyState(state);
+            }
+
+            var selectedHidden = selection.OfType<AsmDefNode>().Any(node => originHiddenNodeIds.Contains(node.AsmDefId));
+            if (selectedHidden)
+            {
+                ClearSelection();
+                NodeSelected?.Invoke(string.Empty);
+            }
+        }
+
+        private bool PassesOriginFilter(AsmDefOrigin origin)
+        {
+            if (origin == AsmDefOrigin.ProjectAssets)
+                return true;
+            if ((origin == AsmDefOrigin.EmbeddedPackage || origin == AsmDefOrigin.RegistryPackage) && filter.ShowPackages)
+                return true;
+            if (origin == AsmDefOrigin.BuiltIn && filter.ShowBuiltIns)
+                return true;
+            return false;
+        }
+
+        private bool PassesSearchFilter(string searchName)
+        {
+            return string.IsNullOrEmpty(filter.SearchQuery) ||
+                   (searchName ?? string.Empty).Contains(filter.SearchQuery);
+        }
+
+        private void RefreshSettings()
+        {
+            foreach (var node in nodesById.Values)
+                node.RefreshSettings();
+            foreach (var edge in asmDefEdges)
+                edge.RefreshSettings();
         }
 
         private GraphViewChange OnGraphViewChanged(GraphViewChange change)
@@ -286,6 +425,11 @@ namespace AssemblyArchitect.Editor.Graph
         {
             if (evt.keyCode == KeyCode.Delete || evt.keyCode == KeyCode.Backspace)
                 skipNextRemoveConfirmation = evt.shiftKey;
+        }
+
+        private static string GetEdgeKey(string sourceId, string targetId)
+        {
+            return (sourceId ?? string.Empty) + "\n" + (targetId ?? string.Empty);
         }
     }
 }

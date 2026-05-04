@@ -16,3 +16,14 @@
 .aa-edge-filtered {
   opacity: 0.2;
 }
+
+.aa-minimap {
+  border-top-width: 1px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+  border-top-color: #3a3a3a;
+  border-right-color: #3a3a3a;
+  border-bottom-color: #3a3a3a;
+  border-left-color: #3a3a3a;
+}

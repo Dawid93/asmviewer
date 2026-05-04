@@ -1,5 +1,6 @@
 using System;
 using AssemblyArchitect.Editor.Core;
+using AssemblyArchitect.Editor.Settings;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
@@ -19,6 +20,8 @@ namespace AssemblyArchitect.Editor.Graph
     internal sealed class AsmDefNode : Node
     {
         private const string UssPath = "Packages/com.ddev.assembly-architect/Editor/UI/AsmDefNode.uss";
+        private readonly VisualElement originIcon;
+        private NodeVisualState visualState;
 
         public AsmDefNode(AsmDefNodeModel model)
         {
@@ -26,6 +29,9 @@ namespace AssemblyArchitect.Editor.Graph
 
             AsmDefId = model.Id;
             AssetPath = model.AssetPath;
+            Origin = model.Origin;
+            DisplayName = model.Name ?? string.Empty;
+            SearchName = DisplayName.ToLowerInvariant();
             title = model.Name;
             userData = model.Id;
 
@@ -34,8 +40,9 @@ namespace AssemblyArchitect.Editor.Graph
             AddStyleSheet();
 
             titleButtonContainer.Clear();
-            AddOriginIcon();
+            originIcon = AddOriginIcon();
             AddSubtitle(GetOriginLabel(model.Origin));
+            ApplySettingsColors();
 
             InputPort = Port.Create<Edge>(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(bool));
             InputPort.portName = string.Empty;
@@ -53,14 +60,24 @@ namespace AssemblyArchitect.Editor.Graph
 
         public string AsmDefId { get; }
         public string AssetPath { get; }
+        public AsmDefOrigin Origin { get; }
+        public string DisplayName { get; }
+        public string SearchName { get; }
         public Port InputPort { get; }
         public Port OutputPort { get; }
 
         public void ApplyState(NodeVisualState state)
         {
+            visualState = state;
             EnableInClassList("aa-state-cycle", (state & NodeVisualState.InCycle) != 0);
             EnableInClassList("aa-state-broken", (state & NodeVisualState.Broken) != 0);
             EnableInClassList("aa-state-filtered", (state & NodeVisualState.Filtered) != 0);
+            ApplySettingsColors();
+        }
+
+        public void RefreshSettings()
+        {
+            ApplyState(visualState);
         }
 
         private void AddStyleSheet()
@@ -70,11 +87,12 @@ namespace AssemblyArchitect.Editor.Graph
                 styleSheets.Add(styleSheet);
         }
 
-        private void AddOriginIcon()
+        private VisualElement AddOriginIcon()
         {
             var icon = new VisualElement();
             icon.AddToClassList("aa-origin-icon");
             titleContainer.Insert(0, icon);
+            return icon;
         }
 
         private void AddSubtitle(string text)
@@ -115,6 +133,35 @@ namespace AssemblyArchitect.Editor.Graph
                     return "Built-in";
                 default:
                     return "Unknown";
+            }
+        }
+
+        private void ApplySettingsColors()
+        {
+            var color = GetOriginColor();
+            if ((visualState & NodeVisualState.InCycle) != 0)
+                color = AssemblyArchitectSettings.instance.CycleEdgeColor;
+            if ((visualState & NodeVisualState.Broken) != 0)
+                color = AssemblyArchitectSettings.instance.BrokenColor;
+
+            style.borderLeftColor = color;
+            if (originIcon != null)
+                originIcon.style.backgroundColor = color;
+        }
+
+        private Color GetOriginColor()
+        {
+            var settings = AssemblyArchitectSettings.instance;
+            switch (Origin)
+            {
+                case AsmDefOrigin.ProjectAssets:
+                    return settings.ProjectNodeColor;
+                case AsmDefOrigin.EmbeddedPackage:
+                    return settings.EmbeddedPkgColor;
+                case AsmDefOrigin.RegistryPackage:
+                case AsmDefOrigin.BuiltIn:
+                default:
+                    return settings.RegistryPkgColor;
             }
         }
     }

@@ -4,7 +4,9 @@
     "Editor"
   ],
   "references": [
-    "AssemblyArchitect.Editor"
+    "AssemblyArchitect.Editor",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
   ],
   "defineConstraints": [
     "UNITY_INCLUDE_TESTS"

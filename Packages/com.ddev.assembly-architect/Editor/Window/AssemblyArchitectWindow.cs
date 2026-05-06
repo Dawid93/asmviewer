@@ -41,6 +41,7 @@ namespace AssemblyArchitect.Editor.Window
         private CreateAsmDefCommand           _createAsmDefCmd;
         private AsmDefInspectorPanel          _inspector;
         private CycleBanner                   _cycleBanner;
+        private GraphFilter                   _filter;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ namespace AssemblyArchitect.Editor.Window
             _removeRefCmd    = new RemoveReferenceCommand(_repo, writer);
             _createAsmDefCmd = new CreateAsmDefCommand(_repo, writer);
 
+            // Filter state is initialized in CreateGUI after toolbar loads persisted toggles
             EditorApplication.delayCall += Rebuild;
         }
 
@@ -133,6 +135,9 @@ namespace AssemblyArchitect.Editor.Window
             toolbarHost?.Add(_toolbar);
 
             WireToolbarEvents();
+
+            // Initialize filter from persisted toggle state (toolbar has already called LoadState)
+            _filter = new GraphFilter(string.Empty, showPackages, showBuiltIns);
 
             // Cycle banner — inserted between toolbar and body
             _cycleBanner = new CycleBanner(_graphView);
@@ -202,6 +207,9 @@ namespace AssemblyArchitect.Editor.Window
             _graphView.ApplyCycleHighlight(cycles);
             _cycleBanner?.Update(cycles);
 
+            // Apply active filter (preserves cycle highlight state)
+            _graphView.ApplyFilter(_filter);
+
             // Update status bar
             var status = rootVisualElement?.Q<Label>("status-label");
             if (status != null)
@@ -248,13 +256,30 @@ namespace AssemblyArchitect.Editor.Window
                 Rebuild();
             };
             _toolbar.SaveLayoutRequested   += () => { /* TODO Task 5.4 */ };
-            _toolbar.SearchChanged         += query => { /* TODO Task 5.2 */ };
-            _toolbar.ShowPackagesChanged   += show => { showPackages = show; Rebuild(); };
-            _toolbar.ShowBuiltInsChanged   += show => { showBuiltIns = show; Rebuild(); };
+            _toolbar.SearchChanged         += query => UpdateFilter(new GraphFilter(
+                (query ?? "").ToLowerInvariant(), _filter.ShowPackages, _filter.ShowBuiltIns));
+            _toolbar.ShowPackagesChanged   += show =>
+            {
+                showPackages = show;
+                UpdateFilter(new GraphFilter(_filter.SearchQuery, show, _filter.ShowBuiltIns));
+            };
+            _toolbar.ShowBuiltInsChanged   += show =>
+            {
+                showBuiltIns = show;
+                UpdateFilter(new GraphFilter(_filter.SearchQuery, _filter.ShowPackages, show));
+            };
             _toolbar.MiniMapToggled        += show => { showMiniMap = show; /* TODO Task 5.3 */ };
             _toolbar.OpenSettingsRequested += () => SettingsService.OpenProjectSettings("Project/Assembly Architect");
             _toolbar.OpenDocsRequested     += () => Application.OpenURL("https://github.com");
             _toolbar.ResetLayoutRequested  += () => { _positions.Clear(); Rebuild(); };
+        }
+
+        // ── Filter ────────────────────────────────────────────────────────────
+
+        private void UpdateFilter(GraphFilter filter)
+        {
+            _filter = filter;
+            _graphView?.ApplyFilter(_filter);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

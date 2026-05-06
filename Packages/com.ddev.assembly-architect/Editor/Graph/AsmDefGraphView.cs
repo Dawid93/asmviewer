@@ -206,6 +206,84 @@ namespace AssemblyArchitect.Editor.Graph
         internal AsmDefNode GetNodeById(string id) =>
             nodes.OfType<AsmDefNode>().FirstOrDefault(n => n.AsmDefId == id);
 
+        // ── Filter ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Applies origin + search filters: hides origin-filtered nodes entirely,
+        /// dims search-filtered nodes, and propagates visibility to edges.
+        /// Preserves existing cycle-highlight state.
+        /// </summary>
+        public void ApplyFilter(GraphFilter filter)
+        {
+            // Pre-compute hidden and search-dimmed sets in one pass (no per-node allocs)
+            var hiddenIds   = new HashSet<string>(StringComparer.Ordinal);
+            var searchDimIds = new HashSet<string>(StringComparer.Ordinal);
+            bool hasQuery   = !string.IsNullOrEmpty(filter.SearchQuery);
+
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                var origin = node.Model.Origin;
+                bool originVisible =
+                    origin == AsmDefOrigin.ProjectAssets ||
+                    ((origin == AsmDefOrigin.EmbeddedPackage || origin == AsmDefOrigin.RegistryPackage) && filter.ShowPackages) ||
+                    (origin == AsmDefOrigin.BuiltIn && filter.ShowBuiltIns);
+
+                if (!originVisible)
+                {
+                    hiddenIds.Add(node.AsmDefId);
+                    continue;
+                }
+
+                if (hasQuery && !node.Model.Name.ToLowerInvariant().Contains(filter.SearchQuery))
+                    searchDimIds.Add(node.AsmDefId);
+            }
+
+            // Apply to nodes
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                if (hiddenIds.Contains(node.AsmDefId))
+                {
+                    node.style.display = DisplayStyle.None;
+                    continue;
+                }
+
+                node.style.display = DisplayStyle.Flex;
+                var dimmed   = searchDimIds.Contains(node.AsmDefId);
+                var newState = dimmed
+                    ? (node.CurrentState |  NodeVisualState.Filtered)
+                    : (node.CurrentState & ~NodeVisualState.Filtered);
+                node.ApplyState(newState);
+            }
+
+            // Apply to edges
+            foreach (var edge in edges.OfType<AsmDefEdge>())
+            {
+                var src = (edge.output?.node as AsmDefNode)?.AsmDefId;
+                var tgt = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                if (src == null || tgt == null) continue;
+
+                if (hiddenIds.Contains(src) || hiddenIds.Contains(tgt))
+                {
+                    edge.style.display = DisplayStyle.None;
+                    continue;
+                }
+
+                edge.style.display = DisplayStyle.Flex;
+                var dimmed   = searchDimIds.Contains(src) || searchDimIds.Contains(tgt);
+                var newState = dimmed
+                    ? (edge.CurrentState |  EdgeVisualState.Filtered)
+                    : (edge.CurrentState & ~EdgeVisualState.Filtered);
+                edge.ApplyState(newState);
+            }
+
+            // Deselect nodes that became hidden
+            foreach (var sel in selection.OfType<AsmDefNode>().ToList())
+            {
+                if (hiddenIds.Contains(sel.AsmDefId))
+                    RemoveFromSelection(sel);
+            }
+        }
+
         /// <summary>Removes all elements from the graph.</summary>
         public new void Clear()
         {

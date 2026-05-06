@@ -50,6 +50,7 @@ namespace AssemblyArchitect.Editor.Graph
         private readonly Dictionary<string, Vector2> _pendingPositions = new Dictionary<string, Vector2>(StringComparer.Ordinal);
         private Debouncer            _positionDebouncer;
         private AsmDefSearchProvider _searchProvider;
+        private MiniMap              _miniMap;
 
         // ── Constructor ───────────────────────────────────────────────────────
 
@@ -63,6 +64,11 @@ namespace AssemblyArchitect.Editor.Graph
             var grid = new GridBackground();
             Insert(0, grid);
             grid.StretchToParentSize();
+
+            _miniMap = new MiniMap { anchored = true };
+            _miniMap.SetPosition(new Rect(15, 15, 200, 160));
+            _miniMap.AddToClassList("aa-minimap");
+            Add(_miniMap);
 
             var uss = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
             if (uss != null) styleSheets.Add(uss);
@@ -282,6 +288,15 @@ namespace AssemblyArchitect.Editor.Graph
                 if (hiddenIds.Contains(sel.AsmDefId))
                     RemoveFromSelection(sel);
             }
+        }
+
+        // ── Mini-map ──────────────────────────────────────────────────────────
+
+        /// <summary>Shows or hides the built-in mini-map overlay.</summary>
+        public void SetMiniMapVisible(bool visible)
+        {
+            if (_miniMap != null)
+                _miniMap.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>Removes all elements from the graph.</summary>

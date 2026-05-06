@@ -139,6 +139,9 @@ namespace AssemblyArchitect.Editor.Window
             // Initialize filter from persisted toggle state (toolbar has already called LoadState)
             _filter = new GraphFilter(string.Empty, showPackages, showBuiltIns);
 
+            // Apply persisted mini-map visibility
+            _graphView.SetMiniMapVisible(showMiniMap);
+
             // Cycle banner — inserted between toolbar and body
             _cycleBanner = new CycleBanner(_graphView);
             var toolbarEl = rootVisualElement.Q<VisualElement>("toolbar");
@@ -268,7 +271,7 @@ namespace AssemblyArchitect.Editor.Window
                 showBuiltIns = show;
                 UpdateFilter(new GraphFilter(_filter.SearchQuery, _filter.ShowPackages, show));
             };
-            _toolbar.MiniMapToggled        += show => { showMiniMap = show; /* TODO Task 5.3 */ };
+            _toolbar.MiniMapToggled        += show => { showMiniMap = show; _graphView?.SetMiniMapVisible(show); };
             _toolbar.OpenSettingsRequested += () => SettingsService.OpenProjectSettings("Project/Assembly Architect");
             _toolbar.OpenDocsRequested     += () => Application.OpenURL("https://github.com");
             _toolbar.ResetLayoutRequested  += () => { _positions.Clear(); Rebuild(); };

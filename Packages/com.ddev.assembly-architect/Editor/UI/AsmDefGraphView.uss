@@ -28,3 +28,11 @@
 .aa-edge-filtered {
     opacity: 0.2;
 }
+
+/* Mini-map */
+.aa-minimap {
+    background-color: rgba(30, 30, 30, 0.85);
+    border-width: 1px;
+    border-color: #555555;
+    border-radius: 4px;
+}

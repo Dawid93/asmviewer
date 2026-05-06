@@ -31,11 +31,24 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>Fired after a node has been still for ~500 ms following a drag.</summary>
         public event Action<string, Vector2> NodePositionChanged;
 
+        /// <summary>
+        /// Fired when the user chooses "Create Assembly Definition…" from the context menu.
+        /// First arg: graph-content-space position. Second arg: screen-space position for the popup.
+        /// </summary>
+        public event Action<Vector2, Vector2> CreateAsmDefRequested;
+
+        /// <summary>Fired when "Show in Project" is chosen for a node. Arg is the node's StableId.</summary>
+        public event Action<string> NodePingRequested;
+
+        /// <summary>Fired when "Open .asmdef in External Editor" is chosen for a node. Arg is the node's StableId.</summary>
+        public event Action<string> NodeOpenInEditorRequested;
+
         // ── Internal state ────────────────────────────────────────────────────
 
         private readonly Dictionary<string, AsmDefNode> _nodeElements = new Dictionary<string, AsmDefNode>(StringComparer.Ordinal);
         private readonly Dictionary<string, Vector2> _pendingPositions = new Dictionary<string, Vector2>(StringComparer.Ordinal);
-        private Debouncer _positionDebouncer;
+        private Debouncer            _positionDebouncer;
+        private AsmDefSearchProvider _searchProvider;
 
         // ── Constructor ───────────────────────────────────────────────────────
 
@@ -56,7 +69,28 @@ namespace AssemblyArchitect.Editor.Graph
             _positionDebouncer = new Debouncer(500, FlushPendingPositions);
 
             graphViewChanged = OnGraphViewChanged;
+
+            RegisterCallback<KeyDownEvent>(OnKeyDown);
         }
+
+        // ── Search provider ───────────────────────────────────────────────────
+
+        /// <summary>Sets the search provider used for the Spacebar "Create…" shortcut.</summary>
+        public void SetSearchProvider(AsmDefSearchProvider provider)
+        {
+            _searchProvider = provider;
+        }
+
+        // ── Viewport helper ───────────────────────────────────────────────────
+
+        /// <summary>Returns the current viewport center in graph-content space.</summary>
+        public Vector2 GetViewportCenter()
+        {
+            var center = contentRect.center;
+            return contentViewContainer.WorldToLocal(this.LocalToWorld(center));
+        }
+
+        // ── Selection ─────────────────────────────────────────────────────────
 
         public override void AddToSelection(ISelectable selectable)
         {
@@ -142,6 +176,55 @@ namespace AssemblyArchitect.Editor.Graph
                 compatible.Add(port);
             }
             return compatible;
+        }
+
+        // ── Context menu ──────────────────────────────────────────────────────
+
+        public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
+        {
+            // Determine whether the click landed on a node
+            var clickedNode = (evt.target as VisualElement)?.GetFirstAncestorOfType<AsmDefNode>()
+                              ?? evt.target as AsmDefNode;
+
+            if (clickedNode != null)
+            {
+                evt.menu.AppendAction("Show in Project",
+                    _ => NodePingRequested?.Invoke(clickedNode.AsmDefId));
+
+                evt.menu.AppendAction("Open .asmdef in External Editor",
+                    _ => NodeOpenInEditorRequested?.Invoke(clickedNode.AsmDefId));
+
+                evt.menu.AppendAction("Delete Assembly Definition",
+                    _ => UnityEngine.Debug.LogWarning("[AssemblyArchitect] Delete Assembly Definition is not yet implemented."),
+                    DropdownMenuAction.AlwaysDisabled);
+
+                evt.menu.AppendSeparator();
+            }
+            else
+            {
+                // Capture positions while Event.current is still valid (IMGUI event context)
+                var graphPos   = contentViewContainer.WorldToLocal(this.LocalToWorld(evt.localMousePosition));
+                var screenPos  = GUIUtility.GUIToScreenPoint(Event.current?.mousePosition ?? Vector2.zero);
+
+                evt.menu.AppendAction("Create Assembly Definition…",
+                    _ => CreateAsmDefRequested?.Invoke(graphPos, screenPos));
+
+                evt.menu.AppendSeparator();
+            }
+
+            base.BuildContextualMenu(evt);
+        }
+
+        // ── Keyboard ──────────────────────────────────────────────────────────
+
+        private void OnKeyDown(KeyDownEvent evt)
+        {
+            if (evt.keyCode == KeyCode.Space && _searchProvider != null)
+            {
+                var screenPos = GUIUtility.GUIToScreenPoint(Event.current?.mousePosition ?? Vector2.zero);
+                SearchWindow.Open(new SearchWindowContext(screenPos), _searchProvider);
+                evt.StopPropagation();
+            }
         }
 
         // ── Graph view change ─────────────────────────────────────────────────

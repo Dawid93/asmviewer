@@ -4,6 +4,7 @@ using AssemblyArchitect.Editor.Core;
 using AssemblyArchitect.Editor.Core.Layout;
 using AssemblyArchitect.Editor.Graph;
 using AssemblyArchitect.Editor.Infrastructure;
+using AssemblyArchitect.Editor.Window.Dialogs;
 using AssemblyArchitect.Editor.Window.Toolbar;
 using UnityEditor;
 using UnityEngine;
@@ -36,6 +37,7 @@ namespace AssemblyArchitect.Editor.Window
         private Debouncer                     _rebuildDebouncer;
         private AddReferenceCommand           _addRefCmd;
         private RemoveReferenceCommand        _removeRefCmd;
+        private CreateAsmDefCommand           _createAsmDefCmd;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -58,9 +60,10 @@ namespace AssemblyArchitect.Editor.Window
             _repo.Changed += ScheduleRebuild;
             _rebuildDebouncer = new Debouncer(100, Rebuild);
 
-            var writer    = new AsmDefWriter();
-            _addRefCmd    = new AddReferenceCommand(_repo, writer);
-            _removeRefCmd = new RemoveReferenceCommand(_repo, writer);
+            var writer       = new AsmDefWriter();
+            _addRefCmd       = new AddReferenceCommand(_repo, writer);
+            _removeRefCmd    = new RemoveReferenceCommand(_repo, writer);
+            _createAsmDefCmd = new CreateAsmDefCommand(_repo, writer);
 
             EditorApplication.delayCall += Rebuild;
         }
@@ -103,6 +106,14 @@ namespace AssemblyArchitect.Editor.Window
 
             WireGraphViewEvents();
 
+            // Search provider (Spacebar shortcut)
+            var searchProvider = AsmDefSearchProvider.Create(screenPos =>
+            {
+                var graphPos = _graphView.GetViewportCenter();
+                OpenCreatePopup(graphPos, screenPos);
+            });
+            _graphView.SetSearchProvider(searchProvider);
+
             // Toolbar
             var toolbarHost = rootVisualElement.Q<VisualElement>("toolbar");
             _toolbar = new AssemblyArchitectToolbar();
@@ -110,6 +121,28 @@ namespace AssemblyArchitect.Editor.Window
             toolbarHost?.Add(_toolbar);
 
             WireToolbarEvents();
+        }
+
+        // ── Position seeding ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// Pre-seeds a graph position for a node whose <see cref="AsmDefData.StableId"/>
+        /// is known but whose graph element hasn't been created yet (e.g. after file creation).
+        /// </summary>
+        public void SetPendingPosition(string id, Vector2 pos) => _positions[id] = pos;
+
+        // ── Popup factory ─────────────────────────────────────────────────────
+
+        private void OpenCreatePopup(Vector2 graphPos, Vector2 screenPos)
+        {
+            CreateAsmDefPopup.Show(
+                new Rect(screenPos, Vector2.zero),
+                _createAsmDefCmd,
+                _repo,
+                graphPos,
+                lastSelectedNodeId,
+                SetPendingPosition
+            );
         }
 
         // ── Rebuild pipeline ──────────────────────────────────────────────────
@@ -126,9 +159,8 @@ namespace AssemblyArchitect.Editor.Window
             var s         = cc.resolvedStyle.scale.value;
             var viewPos   = new Vector3(t.x, t.y, 0f);
             var viewScale = new Vector3(s.x, s.y, 1f);
-            var prevSelected = lastSelectedNodeId;
 
-            var data = _repo?.LoadAll() ?? (IReadOnlyList<AsmDefData>)System.Array.Empty<AsmDefData>();
+            var data = _repo?.LoadAll() ?? (System.Collections.Generic.IReadOnlyList<AsmDefData>)System.Array.Empty<AsmDefData>();
             _model = DependencyGraphModel.Build(data);
 
             // Compute layout — only fill missing positions
@@ -163,6 +195,20 @@ namespace AssemblyArchitect.Editor.Window
             _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(src, tgt);
             _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(src, tgt, force);
             _graphView.NodePositionChanged += (id, pos) => _positions[id] = pos;
+
+            _graphView.CreateAsmDefRequested += (graphPos, screenPos) => OpenCreatePopup(graphPos, screenPos);
+
+            _graphView.NodePingRequested += id =>
+            {
+                var asset = FindAsmDefAsset(id);
+                if (asset != null) EditorGUIUtility.PingObject(asset);
+            };
+
+            _graphView.NodeOpenInEditorRequested += id =>
+            {
+                var asset = FindAsmDefAsset(id);
+                if (asset != null) AssetDatabase.OpenAsset(asset);
+            };
         }
 
         private void WireToolbarEvents()
@@ -187,6 +233,23 @@ namespace AssemblyArchitect.Editor.Window
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+
+        private UnityEditorInternal.AssemblyDefinitionAsset FindAsmDefAsset(string stableId)
+        {
+            if (string.IsNullOrEmpty(stableId) || _repo == null) return null;
+
+            // Try by GUID first
+            var data = _repo.FindByGuid(stableId);
+            if (data == null)
+            {
+                // Fall back to name lookup
+                foreach (var d in _repo.LoadAll())
+                    if (d.StableId == stableId) { data = d; break; }
+            }
+
+            if (data == null || string.IsNullOrEmpty(data.AssetPath)) return null;
+            return AssetDatabase.LoadAssetAtPath<UnityEditorInternal.AssemblyDefinitionAsset>(data.AssetPath);
+        }
 
         private static GUIContent BuildTitleContent()
         {

@@ -112,7 +112,6 @@ namespace AssemblyArchitect.Tests.Editor.Integration
             var b = CreateAsmDef("CycleDlg", "CYC_B");
 
             _repo.NotifyChanged();
-            // Add A->B first (no cycle)
             var cmd = new AddReferenceCommand(_repo, _writer);
             cmd.Execute(a.StableId, b.StableId);
             _repo.NotifyChanged();

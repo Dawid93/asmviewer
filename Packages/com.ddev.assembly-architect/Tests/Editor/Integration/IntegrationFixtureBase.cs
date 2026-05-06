@@ -45,7 +45,7 @@ namespace AssemblyArchitect.Tests.Editor.Integration
                 Path.Combine(Application.dataPath, "..", assetPath));
 
             var data = new AsmDefData { Name = name, References = refs };
-            File.WriteAllText(absolutePath, UnityEngine.JsonUtility.ToJson(data));
+            File.WriteAllText(absolutePath, AsmDefJsonSerializer.Serialize(data));
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
 
             var guid = AssetDatabase.AssetPathToGUID(assetPath);
@@ -61,7 +61,7 @@ namespace AssemblyArchitect.Tests.Editor.Integration
             var absolutePath = Path.GetFullPath(
                 Path.Combine(Application.dataPath, "..", assetPath));
             var json = File.ReadAllText(absolutePath);
-            var data = JsonUtility.FromJson<AsmDefData>(json);
+            var data = AsmDefJsonSerializer.Deserialize(json);
             data.AssetPath = assetPath;
             data.Guid      = AssetDatabase.AssetPathToGUID(assetPath);
             data.Origin    = AsmDefOrigin.ProjectAssets;

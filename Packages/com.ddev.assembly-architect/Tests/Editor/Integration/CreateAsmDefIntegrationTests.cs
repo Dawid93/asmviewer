@@ -92,9 +92,6 @@ namespace AssemblyArchitect.Tests.Editor.Integration
                 Name   = "DUP_Create",
             };
 
-            // CreateAsmDefCommand calls EditorUtility.DisplayDialog for the duplicate case.
-            // In a headless test run the dialog returns false, so command returns early.
-            // We just assert the file was not overwritten.
             cmd.Execute(args);
 
             var mtimeAfter = File.GetLastWriteTime(absolutePath);

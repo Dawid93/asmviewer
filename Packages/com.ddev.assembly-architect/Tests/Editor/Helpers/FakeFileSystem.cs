@@ -14,8 +14,5 @@ namespace AssemblyArchitect.Tests.Editor.Helpers
         public bool Exists(string path)       => _files.ContainsKey(path);
         public string ReadAllText(string path) => _files[path];
         public void WriteAllText(string path, string contents) => _files[path] = contents;
-
-        public bool Contains(string path) => _files.ContainsKey(path);
-        public string GetContent(string path) => _files.TryGetValue(path, out var v) ? v : null;
     }
 }

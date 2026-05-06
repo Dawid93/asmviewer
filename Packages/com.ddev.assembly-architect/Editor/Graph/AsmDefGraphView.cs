@@ -53,7 +53,15 @@ namespace AssemblyArchitect.Editor.Graph
             _positionDebouncer = new Debouncer(500, FlushPendingPositions);
 
             graphViewChanged = OnGraphViewChanged;
-            selectionChanged += OnSelectionChanged;
+        }
+
+        public override void OnSelectionChange()
+        {
+            base.OnSelectionChange();
+            string id = string.Empty;
+            if (selection.Count == 1 && selection[0] is AsmDefNode n)
+                id = n.AsmDefId;
+            NodeSelected?.Invoke(id);
         }
 
         // ── Public API ────────────────────────────────────────────────────────
@@ -161,16 +169,6 @@ namespace AssemblyArchitect.Editor.Graph
             }
 
             return change;
-        }
-
-        // ── Selection ─────────────────────────────────────────────────────────
-
-        private void OnSelectionChanged()
-        {
-            string id = string.Empty;
-            if (selection.Count == 1 && selection[0] is AsmDefNode n)
-                id = n.AsmDefId;
-            NodeSelected?.Invoke(id);
         }
 
         // ── Position flush ────────────────────────────────────────────────────

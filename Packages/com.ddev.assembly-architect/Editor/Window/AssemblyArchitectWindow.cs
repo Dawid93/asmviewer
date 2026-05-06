@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AssemblyArchitect.Editor.Commands;
 using AssemblyArchitect.Editor.Core;
 using AssemblyArchitect.Editor.Core.Layout;
 using AssemblyArchitect.Editor.Graph;
@@ -33,6 +34,8 @@ namespace AssemblyArchitect.Editor.Window
         private LayoutKind                    _currentLayout = LayoutKind.Hierarchical;
         private readonly Dictionary<string, Vector2> _positions = new Dictionary<string, Vector2>();
         private Debouncer                     _rebuildDebouncer;
+        private AddReferenceCommand           _addRefCmd;
+        private RemoveReferenceCommand        _removeRefCmd;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -54,6 +57,10 @@ namespace AssemblyArchitect.Editor.Window
             _repo = new AsmDefRepository();
             _repo.Changed += ScheduleRebuild;
             _rebuildDebouncer = new Debouncer(100, Rebuild);
+
+            var writer    = new AsmDefWriter();
+            _addRefCmd    = new AddReferenceCommand(_repo, writer);
+            _removeRefCmd = new RemoveReferenceCommand(_repo, writer);
 
             EditorApplication.delayCall += Rebuild;
         }
@@ -152,9 +159,9 @@ namespace AssemblyArchitect.Editor.Window
 
         private void WireGraphViewEvents()
         {
-            _graphView.NodeSelected       += id => { lastSelectedNodeId = id; /* TODO Task 4.4 */ };
-            _graphView.EdgeAddRequested   += (src, tgt) => { /* TODO Task 4.1 */ };
-            _graphView.EdgeRemoveRequested += (src, tgt) => { /* TODO Task 4.2 */ };
+            _graphView.NodeSelected        += id => { lastSelectedNodeId = id; /* TODO Task 4.4 */ };
+            _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(src, tgt);
+            _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(src, tgt, force);
             _graphView.NodePositionChanged += (id, pos) => _positions[id] = pos;
         }
 

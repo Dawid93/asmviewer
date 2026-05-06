@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+  <uie:Toolbar name="toolbar-root" class="aa-toolbar-root">
+    <uie:ToolbarButton name="btn-refresh" class="aa-toolbar-btn" tooltip="Refresh assemblies" />
+    <uie:ToolbarMenu name="menu-layout" class="aa-toolbar-btn" text="Layout" tooltip="Select layout algorithm" />
+    <uie:ToolbarButton name="btn-save-layout" class="aa-toolbar-btn" tooltip="Save current layout" />
+    <uie:ToolbarSpacer class="aa-toolbar-spacer" />
+    <uie:ToolbarSearchField name="search-field" class="aa-toolbar-search" />
+    <uie:ToolbarToggle name="toggle-packages" class="aa-toolbar-toggle" text="Packages" tooltip="Show package assemblies" />
+    <uie:ToolbarToggle name="toggle-builtins" class="aa-toolbar-toggle" text="Built-ins" tooltip="Show built-in Unity assemblies" />
+    <uie:ToolbarToggle name="toggle-minimap" class="aa-toolbar-toggle" text="Mini-map" tooltip="Toggle mini-map" />
+    <uie:ToolbarMenu name="menu-overflow" class="aa-toolbar-btn" text="⋯" tooltip="More options" />
+  </uie:Toolbar>
+</ui:UXML>

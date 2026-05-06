@@ -1,3 +1,4 @@
+using AssemblyArchitect.Editor.Window.Toolbar;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,7 +14,7 @@ namespace AssemblyArchitect.Editor.Window
 
         [SerializeField] private string lastSelectedNodeId;
 
-        private AssemblyArchitectToolbar.AssemblyArchitectToolbar _toolbar;
+        private AssemblyArchitectToolbar _toolbar;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ namespace AssemblyArchitect.Editor.Window
 
             // Toolbar
             var toolbarHost = rootVisualElement.Q<VisualElement>("toolbar");
-            _toolbar = new AssemblyArchitectToolbar.AssemblyArchitectToolbar();
+            _toolbar = new AssemblyArchitectToolbar();
             _toolbar.LoadState(this);
             toolbarHost?.Add(_toolbar);
 

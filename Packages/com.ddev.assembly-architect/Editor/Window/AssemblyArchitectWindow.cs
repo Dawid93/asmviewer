@@ -114,8 +114,11 @@ namespace AssemblyArchitect.Editor.Window
             if (_graphView == null) return;
 
             // Save viewport and selection
-            var viewPos   = _graphView.viewTransform.position;
-            var viewScale = _graphView.viewTransform.scale;
+            var cc        = _graphView.contentViewContainer;
+            var t         = cc.resolvedStyle.translate;
+            var s         = cc.resolvedStyle.scale.value;
+            var viewPos   = new Vector3(t.x, t.y, 0f);
+            var viewScale = new Vector3(s.x, s.y, 1f);
             var prevSelected = lastSelectedNodeId;
 
             var data = _repo?.LoadAll() ?? (IReadOnlyList<AsmDefData>)System.Array.Empty<AsmDefData>();

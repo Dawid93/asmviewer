@@ -40,10 +40,18 @@ namespace AssemblyArchitect.Editor.Settings
         {
             var s = AssemblyArchitectSettings.instance;
 
-            // Layout group
-            Bind<EnumField, LayoutKind>(root, "field-default-layout",
-                f => { f.Init(s.DefaultLayout); f.value = s.DefaultLayout; },
-                (f, v) => { s.DefaultLayout = (LayoutKind)v; s.Save(); });
+            // Layout group — EnumField uses BaseField<Enum>, not BaseField<LayoutKind>, so bind directly
+            var enumField = root.Q<EnumField>("field-default-layout");
+            if (enumField != null)
+            {
+                enumField.Init(s.DefaultLayout);
+                enumField.value = s.DefaultLayout;
+                enumField.RegisterValueChangedCallback(evt =>
+                {
+                    s.DefaultLayout = (LayoutKind)evt.newValue;
+                    s.Save();
+                });
+            }
 
             Bind<IntegerField, int>(root, "field-force-iterations",
                 f => f.value = s.ForceLayoutIterations,

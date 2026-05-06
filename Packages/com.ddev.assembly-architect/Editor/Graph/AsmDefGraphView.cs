@@ -299,9 +299,11 @@ namespace AssemblyArchitect.Editor.Graph
                 _miniMap.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        /// <summary>Removes all elements from the graph.</summary>
+        /// <summary>Removes all nodes and edges from the graph (leaves MiniMap and background intact).</summary>
         public new void Clear()
         {
+            // graphElements enumerates the content pane (nodes, edges) — not direct children like
+            // the grid background or MiniMap which were added via Add(), not AddElement().
             DeleteElements(graphElements.ToList());
             _nodeElements.Clear();
         }

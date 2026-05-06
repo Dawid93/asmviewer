@@ -42,6 +42,10 @@ namespace AssemblyArchitect.Editor.Window
         private AsmDefInspectorPanel          _inspector;
         private CycleBanner                   _cycleBanner;
         private GraphFilter                   _filter;
+        private LayoutCache                   _cache;
+        private LayoutCacheData               _cacheData;
+        private Debouncer                     _saveDebouncer;
+        private bool                          _viewportRestored;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -69,6 +73,15 @@ namespace AssemblyArchitect.Editor.Window
             _removeRefCmd    = new RemoveReferenceCommand(_repo, writer);
             _createAsmDefCmd = new CreateAsmDefCommand(_repo, writer);
 
+            // Load layout cache and seed positions so first rebuild uses saved layout
+            _cache            = new LayoutCache();
+            _cacheData        = _cache.Load();
+            _viewportRestored = false;
+            foreach (var entry in _cacheData.Positions)
+                _positions[entry.Id] = new Vector2(entry.X, entry.Y);
+
+            _saveDebouncer = new Debouncer(500, SaveLayout);
+
             // Filter state is initialized in CreateGUI after toolbar loads persisted toggles
             EditorApplication.delayCall += Rebuild;
         }
@@ -83,6 +96,8 @@ namespace AssemblyArchitect.Editor.Window
 
             _rebuildDebouncer?.Dispose();
             _rebuildDebouncer = null;
+            _saveDebouncer?.Dispose();
+            _saveDebouncer = null;
         }
 
         // ── GUI ───────────────────────────────────────────────────────────────
@@ -202,8 +217,23 @@ namespace AssemblyArchitect.Editor.Window
 
             _graphView.Populate(_model, _positions);
 
-            // Restore viewport
-            _graphView.UpdateViewTransform(viewPos, viewScale);
+            // Restore viewport — use cache on first rebuild, saved state on subsequent ones
+            if (!_viewportRestored && _cacheData != null)
+            {
+                _viewportRestored = true;
+                var vp = _cacheData.ViewportPosition;
+                var vs = _cacheData.ViewportScale;
+                _graphView.UpdateViewTransform(
+                    new Vector3(vp.x, vp.y, 0f),
+                    new Vector3(vs, vs, 1f));
+            }
+            else
+            {
+                _graphView.UpdateViewTransform(viewPos, viewScale);
+            }
+
+            // Schedule auto-save after each rebuild
+            _saveDebouncer?.Bump();
 
             // Cycle highlight + banner
             var cycles = CycleDetector.FindCycles(_model);
@@ -230,7 +260,12 @@ namespace AssemblyArchitect.Editor.Window
             };
             _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(src, tgt);
             _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(src, tgt, force);
-            _graphView.NodePositionChanged += (id, pos) => _positions[id] = pos;
+            _graphView.NodePositionChanged += (id, pos) =>
+            {
+                _positions[id] = pos;
+                _saveDebouncer?.Bump();
+            };
+            _graphView.viewTransformChanged += _ => _saveDebouncer?.Bump();
 
             _graphView.CreateAsmDefRequested += (graphPos, screenPos) => OpenCreatePopup(graphPos, screenPos);
 
@@ -258,7 +293,17 @@ namespace AssemblyArchitect.Editor.Window
                 _positions.Clear();
                 Rebuild();
             };
-            _toolbar.SaveLayoutRequested   += () => { /* TODO Task 5.4 */ };
+            _toolbar.SaveLayoutRequested   += () =>
+            {
+                SaveLayout();
+                var status = rootVisualElement?.Q<Label>("status-label");
+                if (status != null)
+                {
+                    var prev = status.text;
+                    status.text = "Layout saved.";
+                    rootVisualElement.schedule.Execute(() => status.text = prev).StartingIn(2000);
+                }
+            };
             _toolbar.SearchChanged         += query => UpdateFilter(new GraphFilter(
                 (query ?? "").ToLowerInvariant(), _filter.ShowPackages, _filter.ShowBuiltIns));
             _toolbar.ShowPackagesChanged   += show =>
@@ -274,7 +319,37 @@ namespace AssemblyArchitect.Editor.Window
             _toolbar.MiniMapToggled        += show => { showMiniMap = show; _graphView?.SetMiniMapVisible(show); };
             _toolbar.OpenSettingsRequested += () => SettingsService.OpenProjectSettings("Project/Assembly Architect");
             _toolbar.OpenDocsRequested     += () => Application.OpenURL("https://github.com");
-            _toolbar.ResetLayoutRequested  += () => { _positions.Clear(); Rebuild(); };
+            _toolbar.ResetLayoutRequested  += () =>
+            {
+                _cache?.Delete();
+                _cacheData        = new LayoutCacheData();
+                _viewportRestored = false;
+                _positions.Clear();
+                Rebuild();
+            };
+        }
+
+        // ── Layout cache ──────────────────────────────────────────────────────
+
+        private void SaveLayout()
+        {
+            if (_graphView == null || _cache == null) return;
+
+            var cc = _graphView.contentViewContainer;
+            var t  = cc.resolvedStyle.translate;
+            var s  = cc.resolvedStyle.scale.value;
+
+            var entries = new PositionEntry[_positions.Count];
+            int i = 0;
+            foreach (var kv in _positions)
+                entries[i++] = new PositionEntry { Id = kv.Key, X = kv.Value.x, Y = kv.Value.y };
+
+            _cache.Save(new LayoutCacheData
+            {
+                ViewportPosition = new Vector2(t.x, t.y),
+                ViewportScale    = s.x,
+                Positions        = entries,
+            });
         }
 
         // ── Filter ────────────────────────────────────────────────────────────

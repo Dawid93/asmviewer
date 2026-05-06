@@ -1,3 +1,5 @@
+using AssemblyArchitect.Editor.Core;
+using AssemblyArchitect.Editor.Graph;
 using AssemblyArchitect.Editor.Window.Toolbar;
 using UnityEditor;
 using UnityEngine;
@@ -15,6 +17,7 @@ namespace AssemblyArchitect.Editor.Window
         [SerializeField] private string lastSelectedNodeId;
 
         private AssemblyArchitectToolbar _toolbar;
+        private AsmDefGraphView          _graphView;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -60,6 +63,12 @@ namespace AssemblyArchitect.Editor.Window
             var graphHost = rootVisualElement.Q<VisualElement>("graph-host");
             graphHost?.AddToClassList(EditorGUIUtility.isProSkin ? "dark" : "light");
 
+            // Graph view
+            _graphView = new AsmDefGraphView { name = "asmdef-graph" };
+            _graphView.style.flexGrow = 1;
+            graphHost?.Add(_graphView);
+            _graphView.Populate(DependencyGraphModel.Empty, null);
+
             // Toolbar
             var toolbarHost = rootVisualElement.Q<VisualElement>("toolbar");
             _toolbar = new AssemblyArchitectToolbar();
@@ -79,9 +88,9 @@ namespace AssemblyArchitect.Editor.Window
             _toolbar.LayoutRequested       += kind => { /* TODO Task 3.4 */ };
             _toolbar.SaveLayoutRequested   += () => { /* TODO Task 5.4 */ };
             _toolbar.SearchChanged         += query => { /* TODO Task 5.2 */ };
-            _toolbar.ShowPackagesChanged   += show => { /* TODO Task 5.2 */ };
-            _toolbar.ShowBuiltInsChanged   += show => { /* TODO Task 5.2 */ };
-            _toolbar.MiniMapToggled        += show => { /* TODO Task 5.3 */ };
+            _toolbar.ShowPackagesChanged   += show => { showPackages = show; };
+            _toolbar.ShowBuiltInsChanged   += show => { showBuiltIns = show; };
+            _toolbar.MiniMapToggled        += show => { showMiniMap = show; };
             _toolbar.OpenSettingsRequested += () => SettingsService.OpenProjectSettings("Project/Assembly Architect");
             _toolbar.OpenDocsRequested     += () => Application.OpenURL("https://github.com");
             _toolbar.ResetLayoutRequested  += () => { /* TODO Task 5.4 */ };
@@ -97,7 +106,7 @@ namespace AssemblyArchitect.Editor.Window
                 : new GUIContent("Assembly Architect");
         }
 
-        // ── State helpers (used by toolbar) ──────────────────────────────────
+        // ── State (used by toolbar for persistence) ───────────────────────────
 
         [SerializeField] internal bool showPackages;
         [SerializeField] internal bool showBuiltIns;

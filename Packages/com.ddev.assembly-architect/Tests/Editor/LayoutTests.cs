@@ -98,5 +98,45 @@ namespace AssemblyArchitect.Tests.Editor
             Assert.AreEqual(0, new HierarchicalLayout().Compute(graph, Opts()).Count);
             Assert.AreEqual(0, new ForceDirectedLayout().Compute(graph, Opts()).Count);
         }
+
+        // ── Hierarchical: cycle nodes on adjacent layers ──────────────────────
+
+        [Test]
+        public void Hierarchical_CycleNodes_PlacedOnAdjacentLayers()
+        {
+            // A->B->A  forms a 2-cycle; layout breaks one edge → adjacent layers
+            var graph  = Build(Node("A", "B"), Node("B", "A"));
+            var opts   = Opts();
+            var result = new HierarchicalLayout().Compute(graph, opts);
+
+            float stepY = opts.NodeHeight + opts.VerticalSpacing;
+            float yA = result["A"].y;
+            float yB = result["B"].y;
+
+            Assert.LessOrEqual(Mathf.Abs(yA - yB), stepY + 0.001f,
+                $"Cycle nodes A and B should be on same or adjacent layers, got yA={yA} yB={yB}");
+        }
+
+        // ── Force-directed: different seeds produce different layouts ─────────
+
+        [Test]
+        public void ForceDirected_DifferentSeeds_ProduceDifferentLayouts()
+        {
+            var graph  = Build(Node("A", "B"), Node("B"), Node("C", "D"), Node("D"));
+            var layout = new ForceDirectedLayout();
+
+            var opts1 = new LayoutOptions { Seed = 1 };
+            var opts2 = new LayoutOptions { Seed = 999 };
+
+            var r1 = layout.Compute(graph, opts1);
+            var r2 = layout.Compute(graph, opts2);
+
+            // At least one node must differ when seeds differ
+            bool anyDiffers = false;
+            foreach (var id in r1.Keys)
+                if (r1[id] != r2[id]) { anyDiffers = true; break; }
+
+            Assert.IsTrue(anyDiffers, "Different seeds should produce different initial positions");
+        }
     }
 }

@@ -29,6 +29,28 @@
     border-left-color: #3a3a3a;
 }
 
+.aa-cycle-banner {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    background-color: rgba(180, 60, 0, 0.25);
+    border-bottom-width: 1px;
+    border-bottom-color: #ff8c42;
+}
+
+.aa-cycle-banner-label {
+    color: #ff8c42;
+    -unity-font-style: bold;
+    flex-grow: 1;
+}
+
+.aa-cycle-banner-btn {
+    margin-left: 8px;
+    color: #ff8c42;
+    border-color: #ff8c42;
+}
+
 .aa-status-bar {
     flex-shrink: 0;
     height: 22px;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AssemblyArchitect.Editor.Core;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
@@ -155,6 +156,55 @@ namespace AssemblyArchitect.Editor.Graph
                 AddElement(edge);
             }
         }
+
+        // ── Cycle highlight ───────────────────────────────────────────────────
+
+        /// <summary>Marks nodes and edges that participate in dependency cycles.</summary>
+        public void ApplyCycleHighlight(IReadOnlyList<IReadOnlyList<string>> cycles)
+        {
+            var cycleNodeIds  = new HashSet<string>(StringComparer.Ordinal);
+            var cycleEdgePairs = new HashSet<(string, string)>();
+
+            if (cycles != null)
+            {
+                foreach (var cycle in cycles)
+                {
+                    foreach (var id in cycle)
+                        cycleNodeIds.Add(id);
+
+                    // Every ordered pair within the same SCC is a potential cycle edge
+                    foreach (var src in cycle)
+                        foreach (var tgt in cycle)
+                            if (src != tgt) cycleEdgePairs.Add((src, tgt));
+                }
+            }
+
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                var flag     = cycleNodeIds.Contains(node.AsmDefId);
+                var newState = flag
+                    ? (node.CurrentState | NodeVisualState.InCycle)
+                    : (node.CurrentState & ~NodeVisualState.InCycle);
+                node.ApplyState(newState);
+            }
+
+            foreach (var edge in edges.OfType<AsmDefEdge>())
+            {
+                var src = (edge.output?.node as AsmDefNode)?.AsmDefId;
+                var tgt = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                if (src == null || tgt == null) continue;
+
+                var inCycle  = cycleEdgePairs.Contains((src, tgt));
+                var newState = inCycle
+                    ? (edge.CurrentState | EdgeVisualState.InCycle)
+                    : (edge.CurrentState & ~EdgeVisualState.InCycle);
+                edge.ApplyState(newState);
+            }
+        }
+
+        /// <summary>Returns the graph node whose <see cref="AsmDefNode.AsmDefId"/> matches <paramref name="id"/>.</summary>
+        internal AsmDefNode GetNodeById(string id) =>
+            nodes.OfType<AsmDefNode>().FirstOrDefault(n => n.AsmDefId == id);
 
         /// <summary>Removes all elements from the graph.</summary>
         public new void Clear()

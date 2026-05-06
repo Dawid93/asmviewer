@@ -15,6 +15,11 @@ namespace AssemblyArchitect.Editor.Graph
     /// <summary>Custom edge representing a dependency between two assemblies.</summary>
     internal sealed class AsmDefEdge : Edge
     {
+        private EdgeVisualState _currentState;
+
+        /// <summary>Current composite visual state.</summary>
+        public EdgeVisualState CurrentState => _currentState;
+
         public AsmDefEdge()
         {
             AddToClassList("aa-edge");
@@ -23,6 +28,7 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>Applies or removes visual state classes without rebuilding the edge.</summary>
         public void ApplyState(EdgeVisualState state)
         {
+            _currentState = state;
             SetClass("aa-edge-cycle",    state.HasFlag(EdgeVisualState.InCycle));
             SetClass("aa-edge-filtered", state.HasFlag(EdgeVisualState.Filtered));
         }

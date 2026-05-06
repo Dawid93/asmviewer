@@ -40,6 +40,7 @@ namespace AssemblyArchitect.Editor.Window
         private RemoveReferenceCommand        _removeRefCmd;
         private CreateAsmDefCommand           _createAsmDefCmd;
         private AsmDefInspectorPanel          _inspector;
+        private CycleBanner                   _cycleBanner;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -132,6 +133,11 @@ namespace AssemblyArchitect.Editor.Window
             toolbarHost?.Add(_toolbar);
 
             WireToolbarEvents();
+
+            // Cycle banner — inserted between toolbar and body
+            _cycleBanner = new CycleBanner(_graphView);
+            var toolbarEl = rootVisualElement.Q<VisualElement>("toolbar");
+            toolbarEl?.parent?.Insert(1, _cycleBanner);
         }
 
         // ── Position seeding ──────────────────────────────────────────────────
@@ -191,8 +197,12 @@ namespace AssemblyArchitect.Editor.Window
             // Restore viewport
             _graphView.UpdateViewTransform(viewPos, viewScale);
 
-            // Update status bar
+            // Cycle highlight + banner
             var cycles = CycleDetector.FindCycles(_model);
+            _graphView.ApplyCycleHighlight(cycles);
+            _cycleBanner?.Update(cycles);
+
+            // Update status bar
             var status = rootVisualElement?.Q<Label>("status-label");
             if (status != null)
                 status.text = $"{_model.Nodes.Count} asmdefs · {_model.Edges.Count} references · {_model.MissingReferences.Count} missing · {cycles.Count} cycles";

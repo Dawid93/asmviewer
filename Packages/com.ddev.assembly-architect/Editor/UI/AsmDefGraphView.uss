@@ -21,6 +21,7 @@
 /* Cycle edge */
 .aa-edge-cycle {
     --edge-color: #ff8c42;
+    --edge-width: 3;
 }
 
 /* Filtered / dimmed edge */

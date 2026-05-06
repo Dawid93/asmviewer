@@ -32,8 +32,15 @@ namespace AssemblyArchitect.Editor.Graph
 
         private NodeVisualState _currentState;
 
+        /// <summary>The model this node was built from (used for filtering).</summary>
+        public AsmDefNodeModel Model { get; }
+
+        /// <summary>Current composite visual state.</summary>
+        public NodeVisualState CurrentState => _currentState;
+
         public AsmDefNode(AsmDefNodeModel model)
         {
+            Model    = model;
             AsmDefId = model.Id;
             userData  = model.Id;
             title     = model.Name;

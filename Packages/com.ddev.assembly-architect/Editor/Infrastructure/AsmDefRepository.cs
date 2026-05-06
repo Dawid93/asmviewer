@@ -95,7 +95,7 @@ namespace AssemblyArchitect.Editor.Infrastructure
                 try
                 {
                     var json = _fs.ReadAllText(entry.AbsolutePath);
-                    data = JsonUtility.FromJson<AsmDefData>(json);
+                    data = AsmDefJsonSerializer.Deserialize(json);
                 }
                 catch (Exception ex)
                 {

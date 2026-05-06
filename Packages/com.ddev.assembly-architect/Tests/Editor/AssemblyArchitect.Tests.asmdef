@@ -1,14 +1,21 @@
 {
-  "name": "AssemblyArchitect.Tests",
-  "includePlatforms": [
-    "Editor"
-  ],
-  "references": [
-    "AssemblyArchitect.Editor",
-    "UnityEngine.TestRunner",
-    "UnityEditor.TestRunner"
-  ],
-  "defineConstraints": [
-    "UNITY_INCLUDE_TESTS"
-  ]
+    "name": "AssemblyArchitect.Tests",
+    "rootNamespace": "",
+    "references": [
+        "AssemblyArchitect.Editor",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

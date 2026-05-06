@@ -41,6 +41,9 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>Fired when "Show in Project" is chosen for a node. Arg is the node's StableId.</summary>
         public event Action<string> NodePingRequested;
 
+        /// <summary>Fired when "Select in Project" is chosen for a node. Arg is the node's StableId.</summary>
+        public event Action<string> NodeSelectInProjectRequested;
+
         /// <summary>Fired when "Open .asmdef in External Editor" is chosen for a node. Arg is the node's StableId.</summary>
         public event Action<string> NodeOpenInEditorRequested;
 
@@ -149,13 +152,13 @@ namespace AssemblyArchitect.Editor.Graph
 
             foreach (var edgeModel in model.Edges)
             {
-                if (!_nodeElements.TryGetValue(edgeModel.SourceId, out var srcNode)) continue;
-                if (!_nodeElements.TryGetValue(edgeModel.TargetId, out var tgtNode)) continue;
+                if (!_nodeElements.TryGetValue(edgeModel.SourceId, out var dependentNode)) continue;
+                if (!_nodeElements.TryGetValue(edgeModel.TargetId, out var dependencyNode)) continue;
 
                 var edge = new AsmDefEdge
                 {
-                    output = srcNode.OutputPort,
-                    input  = tgtNode.InputPort,
+                    output = dependencyNode.OutputPort,
+                    input  = dependentNode.InputPort,
                 };
                 edge.input.Connect(edge);
                 edge.output.Connect(edge);
@@ -196,8 +199,8 @@ namespace AssemblyArchitect.Editor.Graph
 
             foreach (var edge in edges.OfType<AsmDefEdge>())
             {
-                var src = (edge.output?.node as AsmDefNode)?.AsmDefId;
-                var tgt = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                var src = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                var tgt = (edge.output?.node as AsmDefNode)?.AsmDefId;
                 if (src == null || tgt == null) continue;
 
                 var inCycle  = cycleEdgePairs.Contains((src, tgt));
@@ -336,6 +339,9 @@ namespace AssemblyArchitect.Editor.Graph
                 evt.menu.AppendAction("Show in Project",
                     _ => NodePingRequested?.Invoke(clickedNode.AsmDefId));
 
+                evt.menu.AppendAction("Select in Project",
+                    _ => NodeSelectInProjectRequested?.Invoke(clickedNode.AsmDefId));
+
                 evt.menu.AppendAction("Open .asmdef in External Editor",
                     _ => NodeOpenInEditorRequested?.Invoke(clickedNode.AsmDefId));
 
@@ -381,10 +387,10 @@ namespace AssemblyArchitect.Editor.Graph
             {
                 foreach (var edge in change.edgesToCreate)
                 {
-                    var srcNode = edge.output?.node as AsmDefNode;
-                    var tgtNode = edge.input?.node as AsmDefNode;
-                    if (srcNode != null && tgtNode != null)
-                        EdgeAddRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId);
+                    var dependencyNode = edge.output?.node as AsmDefNode;
+                    var dependentNode  = edge.input?.node as AsmDefNode;
+                    if (dependencyNode != null && dependentNode != null)
+                        EdgeAddRequested?.Invoke(dependentNode.AsmDefId, dependencyNode.AsmDefId);
                 }
                 change.edgesToCreate.Clear();
             }
@@ -397,10 +403,10 @@ namespace AssemblyArchitect.Editor.Graph
                 {
                     if (change.elementsToRemove[i] is AsmDefEdge ae)
                     {
-                        var srcNode = ae.output?.node as AsmDefNode;
-                        var tgtNode = ae.input?.node as AsmDefNode;
-                        if (srcNode != null && tgtNode != null)
-                            EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId, shift);
+                        var dependencyNode = ae.output?.node as AsmDefNode;
+                        var dependentNode  = ae.input?.node as AsmDefNode;
+                        if (dependencyNode != null && dependentNode != null)
+                            EdgeRemoveRequested?.Invoke(dependentNode.AsmDefId, dependencyNode.AsmDefId, shift);
                         change.elementsToRemove.RemoveAt(i);
                     }
                 }

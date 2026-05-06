@@ -26,10 +26,10 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>The <see cref="AsmDefData.StableId"/> of the assembly this node represents.</summary>
         public string AsmDefId { get; }
 
-        /// <summary>The single input port (accepts incoming references).</summary>
+        /// <summary>The single input port. Connect referenced assemblies here to add them to this asmdef.</summary>
         public Port InputPort { get; }
 
-        /// <summary>The single output port (declares outgoing references).</summary>
+        /// <summary>The single output port. Drag from here to another node's input to make that node reference this asmdef.</summary>
         public Port OutputPort { get; }
 
         private NodeVisualState _currentState;

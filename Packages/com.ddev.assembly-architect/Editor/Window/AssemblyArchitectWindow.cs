@@ -280,6 +280,15 @@ namespace AssemblyArchitect.Editor.Window
                 if (asset != null) EditorGUIUtility.PingObject(asset);
             };
 
+            _graphView.NodeSelectInProjectRequested += id =>
+            {
+                var asset = FindAsmDefAsset(id);
+                if (asset == null) return;
+
+                Selection.activeObject = asset;
+                EditorGUIUtility.PingObject(asset);
+            };
+
             _graphView.NodeOpenInEditorRequested += id =>
             {
                 var asset = FindAsmDefAsset(id);

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AssemblyArchitect.Editor.Core;
 using AssemblyArchitect.Editor.Infrastructure;
@@ -9,13 +10,20 @@ namespace AssemblyArchitect.Editor.Commands
     /// <summary>Adds an assembly reference from source to target, with cycle and read-only guards.</summary>
     internal sealed class AddReferenceCommand
     {
-        private readonly AsmDefRepository _repo;
-        private readonly AsmDefWriter     _writer;
+        private readonly AsmDefRepository        _repo;
+        private readonly AsmDefWriter            _writer;
+        private readonly Func<DialogPrompt, bool> _showDialog;
 
-        public AddReferenceCommand(AsmDefRepository repo, AsmDefWriter writer)
+        /// <param name="showDialog">
+        /// Optional seam for cycle-warning dialogs. Receives a <see cref="DialogPrompt"/> and returns
+        /// <c>true</c> to confirm, <c>false</c> to cancel. Defaults to <see cref="EditorUtility.DisplayDialog"/>.
+        /// </param>
+        public AddReferenceCommand(AsmDefRepository repo, AsmDefWriter writer,
+                                   Func<DialogPrompt, bool> showDialog = null)
         {
-            _repo   = repo;
-            _writer = writer;
+            _repo       = repo;
+            _writer     = writer;
+            _showDialog = showDialog ?? (p => EditorUtility.DisplayDialog(p.Title, p.Message, p.Confirm, p.Cancel));
         }
 
         public void Execute(string sourceId, string targetId)
@@ -54,10 +62,11 @@ namespace AssemblyArchitect.Editor.Commands
             var model = DependencyGraphModel.Build(all);
             if (CycleDetector.WouldCreateCycle(model, sourceId, targetId))
             {
-                if (!EditorUtility.DisplayDialog(
-                        "Creates a dependency cycle",
-                        $"Adding {target.Name} as a reference of {source.Name} would create a cycle.\nAdd anyway?",
-                        "Add anyway", "Cancel"))
+                var prompt = new DialogPrompt(
+                    "Creates a dependency cycle",
+                    $"Adding {target.Name} as a reference of {source.Name} would create a cycle.\nAdd anyway?",
+                    "Add anyway", "Cancel");
+                if (!_showDialog(prompt))
                     return;
             }
 

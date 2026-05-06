@@ -23,7 +23,7 @@ namespace AssemblyArchitect.Editor.Settings
         public static event Action Changed;
 
         /// <summary>Saves the asset and notifies listeners.</summary>
-        public new void Save()
+        public void Save()
         {
             base.Save(true);
             Changed?.Invoke();

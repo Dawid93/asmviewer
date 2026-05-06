@@ -55,9 +55,26 @@ namespace AssemblyArchitect.Editor.Graph
             graphViewChanged = OnGraphViewChanged;
         }
 
-        public override void OnSelectionChange()
+        public override void AddToSelection(ISelectable selectable)
         {
-            base.OnSelectionChange();
+            base.AddToSelection(selectable);
+            NotifySelectionChanged();
+        }
+
+        public override void RemoveFromSelection(ISelectable selectable)
+        {
+            base.RemoveFromSelection(selectable);
+            NotifySelectionChanged();
+        }
+
+        public override void ClearSelection()
+        {
+            base.ClearSelection();
+            NotifySelectionChanged();
+        }
+
+        private void NotifySelectionChanged()
+        {
             string id = string.Empty;
             if (selection.Count == 1 && selection[0] is AsmDefNode n)
                 id = n.AsmDefId;

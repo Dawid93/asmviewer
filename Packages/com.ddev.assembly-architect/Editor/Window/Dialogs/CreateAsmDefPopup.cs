@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AssemblyArchitect.Editor.Commands;
 using AssemblyArchitect.Editor.Infrastructure;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 

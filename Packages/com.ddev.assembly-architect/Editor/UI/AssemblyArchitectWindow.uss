@@ -1,0 +1,40 @@
+.aa-root {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.aa-toolbar {
+    flex-shrink: 0;
+}
+
+.aa-body {
+    flex-grow: 1;
+}
+
+.aa-graph-host {
+    flex-grow: 1;
+    min-width: 400px;
+    background-color: #1e1e1e;
+}
+
+/* Light skin override */
+.aa-graph-host.light {
+    background-color: #c8c8c8;
+}
+
+.aa-inspector-host {
+    width: 320px;
+    padding: 8px;
+    border-left-width: 1px;
+    border-left-color: #3a3a3a;
+}
+
+.aa-status-bar {
+    flex-shrink: 0;
+    height: 22px;
+    border-top-width: 1px;
+    border-top-color: #3a3a3a;
+    padding-left: 8px;
+    flex-direction: row;
+    align-items: center;
+}

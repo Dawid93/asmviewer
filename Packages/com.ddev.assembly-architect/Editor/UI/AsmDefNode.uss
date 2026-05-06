@@ -1,0 +1,71 @@
+/* ── Base node ─────────────────────────────────────────────────────────── */
+.aa-node {
+    min-width: 180px;
+    max-width: 280px;
+    background-color: #2d2d30;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: #555555;
+}
+
+/* ── Subtitle ──────────────────────────────────────────────────────────── */
+.aa-node-subtitle {
+    font-size: 9px;
+    color: #aaaaaa;
+    margin-top: -2px;
+    margin-left: 6px;
+    margin-bottom: 2px;
+    -unity-font-style: italic;
+}
+
+/* ── Origin colors (left border accent) ───────────────────────────────── */
+.aa-origin-project {
+    border-left-color: #4ea1ff;
+    border-left-width: 4px;
+}
+
+.aa-origin-package-embedded {
+    border-left-color: #a06cff;
+    border-left-width: 4px;
+}
+
+.aa-origin-package-registry {
+    border-left-color: #888888;
+    border-left-width: 4px;
+}
+
+.aa-origin-builtin {
+    border-left-color: #555555;
+    border-left-width: 4px;
+    border-style: dashed;
+}
+
+/* ── States ────────────────────────────────────────────────────────────── */
+.aa-state-cycle {
+    border-color: #ff8c42;
+    -unity-text-outline-color: rgba(255, 140, 66, 0.3);
+    -unity-text-outline-width: 2px;
+}
+
+.aa-state-broken {
+    border-color: #ff4d4d;
+}
+
+.aa-state-filtered {
+    opacity: 0.25;
+}
+
+/* ── Origin dot ────────────────────────────────────────────────────────── */
+.aa-origin-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.aa-origin-project .aa-origin-dot      { background-color: #4ea1ff; }
+.aa-origin-package-embedded .aa-origin-dot { background-color: #a06cff; }
+.aa-origin-package-registry .aa-origin-dot { background-color: #888888; }
+.aa-origin-builtin .aa-origin-dot      { background-color: #555555; }

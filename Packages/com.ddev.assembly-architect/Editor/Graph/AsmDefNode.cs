@@ -1,7 +1,9 @@
 using System;
 using AssemblyArchitect.Editor.Core;
+using AssemblyArchitect.Editor.Settings;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace AssemblyArchitect.Editor.Graph
@@ -100,9 +102,37 @@ namespace AssemblyArchitect.Editor.Graph
             };
             AddToClassList(cls);
 
+            // Override border color from settings (falls back to USS defaults if settings unavailable)
+            var color = GetSettingsColor(origin);
+            if (color.HasValue)
+            {
+                style.borderLeftColor = new StyleColor(color.Value);
+                style.borderLeftWidth = 4;
+            }
+
             var dot = new VisualElement();
             dot.AddToClassList("aa-origin-dot");
+            if (color.HasValue) dot.style.backgroundColor = new StyleColor(color.Value);
             titleContainer.Insert(0, dot);
+        }
+
+        private static Color? GetSettingsColor(AsmDefOrigin origin)
+        {
+            try
+            {
+                var s = AssemblyArchitectSettings.instance;
+                return origin switch
+                {
+                    AsmDefOrigin.ProjectAssets    => s.ProjectNodeColor,
+                    AsmDefOrigin.EmbeddedPackage  => s.EmbeddedPkgColor,
+                    AsmDefOrigin.RegistryPackage  => s.RegistryPkgColor,
+                    _                             => (Color?)null,
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static string OriginLabel(AsmDefOrigin origin) => origin switch

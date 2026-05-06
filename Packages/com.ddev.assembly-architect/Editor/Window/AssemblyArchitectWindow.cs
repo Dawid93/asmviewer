@@ -4,6 +4,7 @@ using AssemblyArchitect.Editor.Core;
 using AssemblyArchitect.Editor.Core.Layout;
 using AssemblyArchitect.Editor.Graph;
 using AssemblyArchitect.Editor.Infrastructure;
+using AssemblyArchitect.Editor.Settings;
 using AssemblyArchitect.Editor.Window.Dialogs;
 using AssemblyArchitect.Editor.Window.Inspector;
 using AssemblyArchitect.Editor.Window.Toolbar;
@@ -82,6 +83,8 @@ namespace AssemblyArchitect.Editor.Window
 
             _saveDebouncer = new Debouncer(500, SaveLayout);
 
+            AssemblyArchitectSettings.Changed += ScheduleRebuild;
+
             // Filter state is initialized in CreateGUI after toolbar loads persisted toggles
             EditorApplication.delayCall += Rebuild;
         }
@@ -93,6 +96,8 @@ namespace AssemblyArchitect.Editor.Window
 
             if (_repo != null)
                 _repo.Changed -= ScheduleRebuild;
+
+            AssemblyArchitectSettings.Changed -= ScheduleRebuild;
 
             _rebuildDebouncer?.Dispose();
             _rebuildDebouncer = null;

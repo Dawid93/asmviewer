@@ -5,6 +5,7 @@ using AssemblyArchitect.Editor.Core.Layout;
 using AssemblyArchitect.Editor.Graph;
 using AssemblyArchitect.Editor.Infrastructure;
 using AssemblyArchitect.Editor.Window.Dialogs;
+using AssemblyArchitect.Editor.Window.Inspector;
 using AssemblyArchitect.Editor.Window.Toolbar;
 using UnityEditor;
 using UnityEngine;
@@ -38,6 +39,7 @@ namespace AssemblyArchitect.Editor.Window
         private AddReferenceCommand           _addRefCmd;
         private RemoveReferenceCommand        _removeRefCmd;
         private CreateAsmDefCommand           _createAsmDefCmd;
+        private AsmDefInspectorPanel          _inspector;
 
         // ── Menu ─────────────────────────────────────────────────────────────
 
@@ -105,6 +107,15 @@ namespace AssemblyArchitect.Editor.Window
             graphHost?.Add(_graphView);
 
             WireGraphViewEvents();
+
+            // Inspector panel
+            var inspectorHost = rootVisualElement.Q<VisualElement>("inspector-host");
+            if (inspectorHost != null)
+            {
+                _inspector = new AsmDefInspectorPanel(_repo, new AsmDefWriter());
+                _inspector.style.flexGrow = 1;
+                inspectorHost.Add(_inspector);
+            }
 
             // Search provider (Spacebar shortcut)
             var searchProvider = AsmDefSearchProvider.Create(screenPos =>
@@ -191,7 +202,11 @@ namespace AssemblyArchitect.Editor.Window
 
         private void WireGraphViewEvents()
         {
-            _graphView.NodeSelected        += id => { lastSelectedNodeId = id; /* TODO Task 4.4 */ };
+            _graphView.NodeSelected        += id =>
+            {
+                lastSelectedNodeId = id;
+                _inspector?.ShowFor(id);
+            };
             _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(src, tgt);
             _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(src, tgt, force);
             _graphView.NodePositionChanged += (id, pos) => _positions[id] = pos;

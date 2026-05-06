@@ -1,0 +1,152 @@
+/* ── Inspector panel ─────────────────────────────────────────────────── */
+
+.aa-inspector-content {
+    padding: 4px;
+}
+
+/* Header */
+.aa-inspector-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0,0,0,0.2);
+    margin-bottom: 4px;
+}
+
+.aa-inspector-name {
+    font-size: 13px;
+    -unity-font-style: bold;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aa-origin-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-right: 4px;
+    -unity-font-style: bold;
+}
+
+.aa-origin-badge--project {
+    background-color: rgba(70, 130, 200, 0.35);
+    color: rgb(130, 180, 255);
+}
+
+.aa-origin-badge--embedded {
+    background-color: rgba(150, 80, 200, 0.35);
+    color: rgb(190, 140, 255);
+}
+
+.aa-origin-badge--registry {
+    background-color: rgba(120, 120, 120, 0.35);
+    color: rgb(170, 170, 170);
+}
+
+.aa-origin-badge--builtin {
+    background-color: rgba(80, 80, 80, 0.35);
+    color: rgb(140, 140, 140);
+}
+
+.aa-inspector-btn {
+    width: 22px;
+    height: 22px;
+    margin-left: 2px;
+    padding: 0;
+}
+
+/* Empty state */
+.aa-inspector-empty {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    color: rgba(128, 128, 128, 0.6);
+    margin-top: 40px;
+    font-size: 11px;
+}
+
+/* Read-only note */
+.aa-readonly-note {
+    font-size: 10px;
+    color: rgb(180, 120, 50);
+    padding: 2px 4px;
+    -unity-font-style: italic;
+    margin-bottom: 4px;
+}
+
+/* Section foldout */
+.aa-section {
+    margin-bottom: 2px;
+}
+
+/* List section */
+.aa-list-section {
+    min-height: 60px;
+    max-height: 120px;
+    border-width: 1px;
+    border-color: rgba(0,0,0,0.25);
+    border-radius: 3px;
+    margin-bottom: 4px;
+}
+
+.aa-list-row {
+    flex-direction: row;
+    align-items: center;
+    height: 20px;
+    padding: 0 4px;
+}
+
+.aa-list-row:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.aa-list-item-label {
+    flex-grow: 1;
+    font-size: 11px;
+}
+
+.aa-list-item-field {
+    flex-grow: 1;
+    font-size: 11px;
+}
+
+.aa-list-toolbar {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 2px;
+}
+
+.aa-list-add-btn, .aa-list-remove-btn {
+    font-size: 14px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 2px;
+}
+
+/* Platforms */
+.aa-platforms-container {
+    flex-direction: row;
+}
+
+.aa-platforms-side {
+    flex-grow: 1;
+    margin: 0 2px;
+}
+
+.aa-platforms-label {
+    font-size: 10px;
+    -unity-font-style: bold;
+    margin-bottom: 2px;
+    color: rgba(180,180,180,0.8);
+}
+
+/* Version defines table */
+.aa-version-defines {
+    min-height: 60px;
+    max-height: 140px;
+    margin-bottom: 4px;
+}

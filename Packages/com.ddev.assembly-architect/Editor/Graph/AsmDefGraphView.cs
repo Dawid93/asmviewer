@@ -22,8 +22,11 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>Fired when the user drags a new edge. Does not add an edge to the graph — command layer handles it.</summary>
         public event Action<string, string> EdgeAddRequested;
 
-        /// <summary>Fired when the user deletes an edge. Does not remove the edge — command layer handles it.</summary>
-        public event Action<string, string> EdgeRemoveRequested;
+        /// <summary>
+        /// Fired when the user deletes an edge. Third argument is <c>true</c> when Shift is held (skip confirmation).
+        /// Does not remove the edge — command layer handles it.
+        /// </summary>
+        public event Action<string, string, bool> EdgeRemoveRequested;
 
         /// <summary>Fired after a node has been still for ~500 ms following a drag.</summary>
         public event Action<string, Vector2> NodePositionChanged;
@@ -161,6 +164,7 @@ namespace AssemblyArchitect.Editor.Graph
             // Elements to remove — intercept AsmDefEdge removals
             if (change.elementsToRemove != null)
             {
+                bool shift = Event.current?.shift ?? false;
                 for (int i = change.elementsToRemove.Count - 1; i >= 0; i--)
                 {
                     if (change.elementsToRemove[i] is AsmDefEdge ae)
@@ -168,7 +172,7 @@ namespace AssemblyArchitect.Editor.Graph
                         var srcNode = ae.output?.node as AsmDefNode;
                         var tgtNode = ae.input?.node as AsmDefNode;
                         if (srcNode != null && tgtNode != null)
-                            EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId);
+                            EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId, shift);
                         change.elementsToRemove.RemoveAt(i);
                     }
                 }

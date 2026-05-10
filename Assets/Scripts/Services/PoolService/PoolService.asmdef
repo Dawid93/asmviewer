@@ -1,0 +1,16 @@
+{
+    "name": "PoolService",
+    "rootNamespace": "",
+    "references": [
+        "GUID:f3dc30e787a1cd14e9e06d31ceaa6d1d"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

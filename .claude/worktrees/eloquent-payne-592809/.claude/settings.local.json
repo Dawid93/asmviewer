@@ -9,7 +9,24 @@
       "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/)",
       "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/CycleDetector.cs Packages/com.ddev.assembly-architect/Tests/Editor/CycleDetectorTests.cs)",
       "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/Layout/ Packages/com.ddev.assembly-architect/Tests/Editor/LayoutTests.cs)",
-      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add \"Packages/com.ddev.assembly-architect/\" \"Packages/packages-lock.json\")"
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add \"Packages/com.ddev.assembly-architect/\" \"Packages/packages-lock.json\")",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/UI/AssemblyArchitectWindow.uxml Packages/com.ddev.assembly-architect/Editor/UI/AssemblyArchitectWindow.uss Packages/com.ddev.assembly-architect/Editor/Window/AssemblyArchitectWindow.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/Layout/LayoutKind.cs Packages/com.ddev.assembly-architect/Editor/UI/AssemblyArchitectToolbar.uxml Packages/com.ddev.assembly-architect/Editor/UI/AssemblyArchitectToolbar.uss Packages/com.ddev.assembly-architect/Editor/Window/Toolbar/AssemblyArchitectToolbar.cs Packages/com.ddev.assembly-architect/Editor/Window/AssemblyArchitectWindow.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add summary1.md summary2.md)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" branch)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" log --oneline -3)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Core/DependencyGraphModel.cs Packages/com.ddev.assembly-architect/Editor/UI/AsmDefGraphView.uss Packages/com.ddev.assembly-architect/Editor/Graph/AsmDefGraphView.cs Packages/com.ddev.assembly-architect/Editor/Window/AssemblyArchitectWindow.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Graph/AsmDefNode.cs Packages/com.ddev.assembly-architect/Editor/UI/AsmDefNode.uss)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Graph/AsmDefEdge.cs Packages/com.ddev.assembly-architect/Editor/Graph/Debouncer.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Window/AssemblyArchitectWindow.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add summary3.md)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" commit -m \"docs: add session 3 summary in Polish\")",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Graph/AsmDefGraphView.cs)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" commit -m \"fix\\(graph\\): replace selectionChanged event with OnSelectionChange\\(\\) override\")",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" commit -m \"fix\\(graph\\): handle selection via AddToSelection/RemoveFromSelection/ClearSelection overrides\")",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" commit -m \"fix\\(window\\): replace obsolete ITransform.position/scale with resolvedStyle API\")",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" branch --show-current)",
+      "Bash(git -C \"C:/Users/ddawi/Projects/AsmViewer\" add Packages/com.ddev.assembly-architect/Editor/Commands/AddReferenceCommand.cs Packages/com.ddev.assembly-architect/Editor/Window/AssemblyArchitectWindow.cs)"
     ]
   }
 }

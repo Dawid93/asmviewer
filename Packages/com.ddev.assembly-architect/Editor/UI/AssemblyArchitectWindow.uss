@@ -1,0 +1,62 @@
+.aa-root {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.aa-toolbar {
+    flex-shrink: 0;
+}
+
+.aa-body {
+    flex-grow: 1;
+}
+
+.aa-graph-host {
+    flex-grow: 1;
+    min-width: 400px;
+    background-color: #1e1e1e;
+}
+
+/* Light skin override */
+.aa-graph-host.light {
+    background-color: #c8c8c8;
+}
+
+.aa-inspector-host {
+    width: 320px;
+    padding: 8px;
+    border-left-width: 1px;
+    border-left-color: #3a3a3a;
+}
+
+.aa-cycle-banner {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    background-color: rgba(180, 60, 0, 0.25);
+    border-bottom-width: 1px;
+    border-bottom-color: #ff8c42;
+}
+
+.aa-cycle-banner-label {
+    color: #ff8c42;
+    -unity-font-style: bold;
+    flex-grow: 1;
+}
+
+.aa-cycle-banner-btn {
+    margin-left: 8px;
+    color: #ff8c42;
+    border-color: #ff8c42;
+}
+
+.aa-status-bar {
+    flex-shrink: 0;
+    height: 22px;
+    border-top-width: 1px;
+    border-top-color: #3a3a3a;
+    padding-left: 8px;
+    flex-direction: row;
+    align-items: center;
+}

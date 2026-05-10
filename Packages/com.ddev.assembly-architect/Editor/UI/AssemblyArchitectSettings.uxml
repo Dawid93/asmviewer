@@ -1,0 +1,40 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+  <ui:VisualElement class="aa-settings-root">
+
+    <ui:VisualElement class="aa-settings-group">
+      <ui:Label text="Layout" class="aa-settings-group-header" />
+      <uie:EnumField  name="field-default-layout"    label="Default Layout" />
+      <ui:IntegerField name="field-force-iterations" label="Force Layout Iterations" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="aa-settings-group">
+      <ui:Label text="Visualization" class="aa-settings-group-header" />
+      <uie:ColorField name="field-project-color"  label="Project Node Color" />
+      <uie:ColorField name="field-embedded-color" label="Embedded Package Color" />
+      <uie:ColorField name="field-registry-color" label="Registry Package Color" />
+      <uie:ColorField name="field-cycle-color"    label="Cycle Edge Color" />
+      <uie:ColorField name="field-broken-color"   label="Broken Reference Color" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="aa-settings-group">
+      <ui:Label text="Build" class="aa-settings-group-header" />
+      <ui:Toggle name="field-fail-builds" label="Fail Builds on Cycles" />
+      <ui:HelpBox
+        message="When enabled, builds fail if any dependency cycle exists between project asmdefs. Cycles in package code are ignored."
+        message-type="Info" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="aa-settings-group">
+      <ui:Label text="Storage" class="aa-settings-group-header" />
+      <ui:Toggle name="field-team-shared" label="Team-Shared Layout Cache" />
+      <ui:HelpBox
+        message="When enabled, node positions are stored under ProjectSettings/ and can be committed to source control. When disabled, positions are stored under UserSettings/ for per-user layouts."
+        message-type="Info" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="aa-settings-footer">
+      <ui:Button name="btn-reset" text="Reset to Defaults" />
+    </ui:VisualElement>
+
+  </ui:VisualElement>
+</ui:UXML>

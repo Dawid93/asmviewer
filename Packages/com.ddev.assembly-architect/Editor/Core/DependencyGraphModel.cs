@@ -54,6 +54,9 @@ namespace AssemblyArchitect.Editor.Core
         /// <summary>Returns the node with <paramref name="id"/>, or <c>false</c> if not found.</summary>
         public bool TryGetNode(string id, out AsmDefNodeModel node) => NodesById.TryGetValue(id ?? string.Empty, out node);
 
+        /// <summary>An empty graph with no nodes or edges.</summary>
+        public static readonly DependencyGraphModel Empty = Build(Array.Empty<AsmDefData>());
+
         /// <summary>Builds an immutable <see cref="DependencyGraphModel"/> from a snapshot of assembly data.</summary>
         public static DependencyGraphModel Build(IReadOnlyList<AsmDefData> data)
         {

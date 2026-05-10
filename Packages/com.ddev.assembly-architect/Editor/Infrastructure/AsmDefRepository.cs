@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using AssemblyArchitect.Editor.Core;
-using UnityEditor;
 using UnityEngine;
 
 namespace AssemblyArchitect.Editor.Infrastructure
@@ -18,6 +16,7 @@ namespace AssemblyArchitect.Editor.Infrastructure
         // ── State ─────────────────────────────────────────────────────────────
 
         private readonly IFileSystem _fs;
+        private readonly IAsmDefAssetEnumerator _enumerator;
         private List<AsmDefData> _cache;
         private bool _dirty = true;
 
@@ -25,11 +24,13 @@ namespace AssemblyArchitect.Editor.Infrastructure
 
         /// <summary>
         /// Creates a new repository.
-        /// Pass a custom <paramref name="fs"/> in tests; production code uses <see cref="Default"/>.
+        /// Pass custom <paramref name="fs"/> / <paramref name="enumerator"/> in tests;
+        /// production code uses <see cref="Default"/>.
         /// </summary>
-        public AsmDefRepository(IFileSystem fs = null)
+        public AsmDefRepository(IFileSystem fs = null, IAsmDefAssetEnumerator enumerator = null)
         {
-            _fs = fs ?? new DefaultFileSystem();
+            _fs         = fs         ?? new DefaultFileSystem();
+            _enumerator = enumerator ?? new AssetDatabaseEnumerator();
         }
 
         // ── Public API ────────────────────────────────────────────────────────
@@ -82,32 +83,29 @@ namespace AssemblyArchitect.Editor.Infrastructure
 
         private List<AsmDefData> BuildCache()
         {
-            var result = new List<AsmDefData>();
-            var guids = AssetDatabase.FindAssets("t:AssemblyDefinitionAsset");
+            var result  = new List<AsmDefData>();
+            var entries = _enumerator.GetAll();
 
-            foreach (var guid in guids)
+            foreach (var entry in entries)
             {
-                var assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                var absolutePath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", assetPath));
-
-                if (!_fs.Exists(absolutePath))
+                if (!_fs.Exists(entry.AbsolutePath))
                     continue;
 
                 AsmDefData data;
                 try
                 {
-                    var json = _fs.ReadAllText(absolutePath);
-                    data = JsonUtility.FromJson<AsmDefData>(json);
+                    var json = _fs.ReadAllText(entry.AbsolutePath);
+                    data = AsmDefJsonSerializer.Deserialize(json);
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[AssemblyArchitect] Failed to parse {assetPath}: {ex.Message}");
+                    Debug.LogWarning($"[AssemblyArchitect] Failed to parse {entry.AssetPath}: {ex.Message}");
                     continue;
                 }
 
-                data.AssetPath = assetPath;
-                data.Guid = guid;
-                data.Origin = ClassifyOrigin(assetPath, absolutePath);
+                data.AssetPath = entry.AssetPath;
+                data.Guid      = entry.Guid;
+                data.Origin    = ClassifyOrigin(entry.AssetPath, entry.AbsolutePath);
                 result.Add(data);
             }
 

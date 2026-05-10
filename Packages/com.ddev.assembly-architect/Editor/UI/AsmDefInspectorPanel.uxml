@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+  <ui:ScrollView name="inspector-scroll" style="flex-grow: 1;">
+    <ui:VisualElement name="inspector-content" class="aa-inspector-content" style="flex-grow: 1; padding: 4px;" />
+  </ui:ScrollView>
+</ui:UXML>

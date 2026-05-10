@@ -1,0 +1,467 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using AssemblyArchitect.Editor.Core;
+using UnityEditor;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace AssemblyArchitect.Editor.Graph
+{
+    /// <summary>GraphView that displays the assembly dependency graph.</summary>
+    internal sealed class AsmDefGraphView : GraphView
+    {
+        private const string UssPath = "Packages/com.ddev.assembly-architect/Editor/UI/AsmDefGraphView.uss";
+        private static readonly Vector2 DefaultNodeSize = new Vector2(220f, 80f);
+
+        // ── Events ────────────────────────────────────────────────────────────
+
+        /// <summary>Fired when a single node is selected. Emits the node's StableId, or "" when selection is cleared.</summary>
+        public event Action<string> NodeSelected;
+
+        /// <summary>Fired when the user drags a new edge. Does not add an edge to the graph — command layer handles it.</summary>
+        public event Action<string, string> EdgeAddRequested;
+
+        /// <summary>
+        /// Fired when the user deletes an edge. Third argument is <c>true</c> when Shift is held (skip confirmation).
+        /// Does not remove the edge — command layer handles it.
+        /// </summary>
+        public event Action<string, string, bool> EdgeRemoveRequested;
+
+        /// <summary>Fired after a node has been still for ~500 ms following a drag.</summary>
+        public event Action<string, Vector2> NodePositionChanged;
+
+        /// <summary>
+        /// Fired when the user chooses "Create Assembly Definition…" from the context menu.
+        /// First arg: graph-content-space position. Second arg: screen-space position for the popup.
+        /// </summary>
+        public event Action<Vector2, Vector2> CreateAsmDefRequested;
+
+        /// <summary>Fired when "Show in Project" is chosen for a node. Arg is the node's StableId.</summary>
+        public event Action<string> NodePingRequested;
+
+        /// <summary>Fired when "Open .asmdef in External Editor" is chosen for a node. Arg is the node's StableId.</summary>
+        public event Action<string> NodeOpenInEditorRequested;
+
+        // ── Internal state ────────────────────────────────────────────────────
+
+        private readonly Dictionary<string, AsmDefNode> _nodeElements = new Dictionary<string, AsmDefNode>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Vector2> _pendingPositions = new Dictionary<string, Vector2>(StringComparer.Ordinal);
+        private Debouncer            _positionDebouncer;
+        private AsmDefSearchProvider _searchProvider;
+        private MiniMap              _miniMap;
+
+        /// <summary>
+        /// True while <see cref="Clear"/> is executing <c>DeleteElements</c>.
+        /// Suppresses <see cref="EdgeRemoveRequested"/> so programmatic clearing during
+        /// <see cref="Populate"/> never triggers reference removal on disk.
+        /// </summary>
+        private bool _populatingGraph;
+
+        // ── Constructor ───────────────────────────────────────────────────────
+
+        public AsmDefGraphView()
+        {
+            this.AddManipulator(new ContentZoomer { minScale = 0.25f, maxScale = 2f });
+            this.AddManipulator(new ContentDragger());
+            this.AddManipulator(new SelectionDragger());
+            this.AddManipulator(new RectangleSelector());
+
+            var grid = new GridBackground();
+            Insert(0, grid);
+            grid.StretchToParentSize();
+
+            _miniMap = new MiniMap { anchored = true };
+            _miniMap.SetPosition(new Rect(15, 15, 200, 160));
+            _miniMap.AddToClassList("aa-minimap");
+            Add(_miniMap);
+
+            var uss = AssetDatabase.LoadAssetAtPath<StyleSheet>(UssPath);
+            if (uss != null) styleSheets.Add(uss);
+
+            _positionDebouncer = new Debouncer(500, FlushPendingPositions);
+
+            graphViewChanged = OnGraphViewChanged;
+
+            RegisterCallback<KeyDownEvent>(OnKeyDown);
+        }
+
+        // ── Search provider ───────────────────────────────────────────────────
+
+        /// <summary>Sets the search provider used for the Spacebar "Create…" shortcut.</summary>
+        public void SetSearchProvider(AsmDefSearchProvider provider)
+        {
+            _searchProvider = provider;
+        }
+
+        // ── Viewport helper ───────────────────────────────────────────────────
+
+        /// <summary>Returns the current viewport center in graph-content space.</summary>
+        public Vector2 GetViewportCenter()
+        {
+            var center = contentRect.center;
+            return contentViewContainer.WorldToLocal(this.LocalToWorld(center));
+        }
+
+        // ── Selection ─────────────────────────────────────────────────────────
+
+        public override void AddToSelection(ISelectable selectable)
+        {
+            base.AddToSelection(selectable);
+            NotifySelectionChanged();
+        }
+
+        public override void RemoveFromSelection(ISelectable selectable)
+        {
+            base.RemoveFromSelection(selectable);
+            NotifySelectionChanged();
+        }
+
+        public override void ClearSelection()
+        {
+            base.ClearSelection();
+            NotifySelectionChanged();
+        }
+
+        private void NotifySelectionChanged()
+        {
+            string id = string.Empty;
+            if (selection.Count == 1 && selection[0] is AsmDefNode n)
+                id = n.AsmDefId;
+            NodeSelected?.Invoke(id);
+        }
+
+        // ── Public API ────────────────────────────────────────────────────────
+
+        /// <summary>Clears the graph and re-populates it from <paramref name="model"/> using the given <paramref name="positions"/>.</summary>
+        public void Populate(DependencyGraphModel model, IReadOnlyDictionary<string, Vector2> positions)
+        {
+            Clear();
+            _nodeElements.Clear();
+
+            int index = 0;
+            foreach (var nodeModel in model.Nodes)
+            {
+                Vector2 pos = positions != null && positions.TryGetValue(nodeModel.Id, out var p)
+                    ? p
+                    : new Vector2(50f + index * 50f, 50f + index * 50f);
+
+                var node = new AsmDefNode(nodeModel);
+                node.SetPosition(new Rect(pos, DefaultNodeSize));
+                AddElement(node);
+                _nodeElements[nodeModel.Id] = node;
+                index++;
+            }
+
+            foreach (var edgeModel in model.Edges)
+            {
+                if (!_nodeElements.TryGetValue(edgeModel.SourceId, out var srcNode)) continue;
+                if (!_nodeElements.TryGetValue(edgeModel.TargetId, out var tgtNode)) continue;
+
+                // Convention: the referenced assembly (tgt) exposes its right (Output) socket;
+                // the referencing assembly (src) receives via its left (Input) socket.
+                // Arrow flows provider → consumer, matching "A.right → B.left = B references A".
+                var edge = new AsmDefEdge
+                {
+                    output = tgtNode.OutputPort,
+                    input  = srcNode.InputPort,
+                };
+                edge.input.Connect(edge);
+                edge.output.Connect(edge);
+                AddElement(edge);
+            }
+        }
+
+        // ── Cycle highlight ───────────────────────────────────────────────────
+
+        /// <summary>Marks nodes and edges that participate in dependency cycles.</summary>
+        public void ApplyCycleHighlight(IReadOnlyList<IReadOnlyList<string>> cycles)
+        {
+            var cycleNodeIds  = new HashSet<string>(StringComparer.Ordinal);
+            var cycleEdgePairs = new HashSet<(string, string)>();
+
+            if (cycles != null)
+            {
+                foreach (var cycle in cycles)
+                {
+                    foreach (var id in cycle)
+                        cycleNodeIds.Add(id);
+
+                    // Every ordered pair within the same SCC is a potential cycle edge
+                    foreach (var src in cycle)
+                        foreach (var tgt in cycle)
+                            if (src != tgt) cycleEdgePairs.Add((src, tgt));
+                }
+            }
+
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                var flag     = cycleNodeIds.Contains(node.AsmDefId);
+                var newState = flag
+                    ? (node.CurrentState | NodeVisualState.InCycle)
+                    : (node.CurrentState & ~NodeVisualState.InCycle);
+                node.ApplyState(newState);
+            }
+
+            foreach (var edge in edges.OfType<AsmDefEdge>())
+            {
+                var src = (edge.output?.node as AsmDefNode)?.AsmDefId;
+                var tgt = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                if (src == null || tgt == null) continue;
+
+                var inCycle  = cycleEdgePairs.Contains((src, tgt));
+                var newState = inCycle
+                    ? (edge.CurrentState | EdgeVisualState.InCycle)
+                    : (edge.CurrentState & ~EdgeVisualState.InCycle);
+                edge.ApplyState(newState);
+            }
+        }
+
+        /// <summary>Returns the graph node whose <see cref="AsmDefNode.AsmDefId"/> matches <paramref name="id"/>.</summary>
+        internal AsmDefNode GetNodeById(string id) =>
+            nodes.OfType<AsmDefNode>().FirstOrDefault(n => n.AsmDefId == id);
+
+        // ── Filter ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Applies origin + search filters: hides origin-filtered nodes entirely,
+        /// dims search-filtered nodes, and propagates visibility to edges.
+        /// Preserves existing cycle-highlight state.
+        /// </summary>
+        public void ApplyFilter(GraphFilter filter)
+        {
+            // Pre-compute hidden and search-dimmed sets in one pass (no per-node allocs)
+            var hiddenIds   = new HashSet<string>(StringComparer.Ordinal);
+            var searchDimIds = new HashSet<string>(StringComparer.Ordinal);
+            bool hasQuery   = !string.IsNullOrEmpty(filter.SearchQuery);
+
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                var origin = node.Model.Origin;
+                bool originVisible =
+                    origin == AsmDefOrigin.ProjectAssets ||
+                    ((origin == AsmDefOrigin.EmbeddedPackage || origin == AsmDefOrigin.RegistryPackage) && filter.ShowPackages) ||
+                    (origin == AsmDefOrigin.BuiltIn && filter.ShowBuiltIns);
+
+                if (!originVisible)
+                {
+                    hiddenIds.Add(node.AsmDefId);
+                    continue;
+                }
+
+                if (hasQuery && !node.Model.Name.ToLowerInvariant().Contains(filter.SearchQuery))
+                    searchDimIds.Add(node.AsmDefId);
+            }
+
+            // Apply to nodes
+            foreach (var node in nodes.OfType<AsmDefNode>())
+            {
+                if (hiddenIds.Contains(node.AsmDefId))
+                {
+                    node.style.display = DisplayStyle.None;
+                    continue;
+                }
+
+                node.style.display = DisplayStyle.Flex;
+                var dimmed   = searchDimIds.Contains(node.AsmDefId);
+                var newState = dimmed
+                    ? (node.CurrentState |  NodeVisualState.Filtered)
+                    : (node.CurrentState & ~NodeVisualState.Filtered);
+                node.ApplyState(newState);
+            }
+
+            // Apply to edges
+            foreach (var edge in edges.OfType<AsmDefEdge>())
+            {
+                var src = (edge.output?.node as AsmDefNode)?.AsmDefId;
+                var tgt = (edge.input?.node  as AsmDefNode)?.AsmDefId;
+                if (src == null || tgt == null) continue;
+
+                if (hiddenIds.Contains(src) || hiddenIds.Contains(tgt))
+                {
+                    edge.style.display = DisplayStyle.None;
+                    continue;
+                }
+
+                edge.style.display = DisplayStyle.Flex;
+                var dimmed   = searchDimIds.Contains(src) || searchDimIds.Contains(tgt);
+                var newState = dimmed
+                    ? (edge.CurrentState |  EdgeVisualState.Filtered)
+                    : (edge.CurrentState & ~EdgeVisualState.Filtered);
+                edge.ApplyState(newState);
+            }
+
+            // Deselect nodes that became hidden
+            foreach (var sel in selection.OfType<AsmDefNode>().ToList())
+            {
+                if (hiddenIds.Contains(sel.AsmDefId))
+                    RemoveFromSelection(sel);
+            }
+        }
+
+        // ── Mini-map ──────────────────────────────────────────────────────────
+
+        /// <summary>Shows or hides the built-in mini-map overlay.</summary>
+        public void SetMiniMapVisible(bool visible)
+        {
+            if (_miniMap != null)
+                _miniMap.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Removes all nodes and edges from the graph (leaves MiniMap and background intact).</summary>
+        public new void Clear()
+        {
+            // Discard any pending drag-position updates so they cannot overwrite fresh layout
+            // positions that will be computed after this clear (e.g. on a layout switch).
+            _pendingPositions.Clear();
+
+            // graphElements enumerates the content pane (nodes, edges) — not direct children like
+            // the grid background or MiniMap which were added via Add(), not AddElement().
+            // DeleteElements fires graphViewChanged → OnGraphViewChanged with elementsToRemove,
+            // which would incorrectly trigger EdgeRemoveRequested for every edge. The flag
+            // suppresses that while we are doing a programmatic bulk-clear.
+            _populatingGraph = true;
+            DeleteElements(graphElements.ToList());
+            _populatingGraph = false;
+            _nodeElements.Clear();
+        }
+
+        // ── Compatibility ─────────────────────────────────────────────────────
+
+        public override List<Port> GetCompatiblePorts(Port startPort, NodeAdapter adapter)
+        {
+            var compatible = new List<Port>();
+            foreach (var port in ports)
+            {
+                if (port == startPort) continue;
+                if (port.node == startPort.node) continue;
+                if (port.direction == startPort.direction) continue;
+                compatible.Add(port);
+            }
+            return compatible;
+        }
+
+        // ── Context menu ──────────────────────────────────────────────────────
+
+        public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
+        {
+            // Determine whether the click landed on a node
+            var clickedNode = (evt.target as VisualElement)?.GetFirstAncestorOfType<AsmDefNode>()
+                              ?? evt.target as AsmDefNode;
+
+            if (clickedNode != null)
+            {
+                evt.menu.AppendAction("Show in Project",
+                    _ => NodePingRequested?.Invoke(clickedNode.AsmDefId));
+
+                evt.menu.AppendAction("Open .asmdef in External Editor",
+                    _ => NodeOpenInEditorRequested?.Invoke(clickedNode.AsmDefId));
+
+                evt.menu.AppendAction("Delete Assembly Definition",
+                    _ => UnityEngine.Debug.LogWarning("[AssemblyArchitect] Delete Assembly Definition is not yet implemented."),
+                    DropdownMenuAction.AlwaysDisabled);
+
+                evt.menu.AppendSeparator();
+            }
+            else
+            {
+                // Capture positions while Event.current is still valid (IMGUI event context)
+                var graphPos   = contentViewContainer.WorldToLocal(this.LocalToWorld(evt.localMousePosition));
+                var screenPos  = GUIUtility.GUIToScreenPoint(Event.current?.mousePosition ?? Vector2.zero);
+
+                evt.menu.AppendAction("Create Assembly Definition…",
+                    _ => CreateAsmDefRequested?.Invoke(graphPos, screenPos));
+
+                evt.menu.AppendSeparator();
+            }
+
+            base.BuildContextualMenu(evt);
+        }
+
+        // ── Keyboard ──────────────────────────────────────────────────────────
+
+        private void OnKeyDown(KeyDownEvent evt)
+        {
+            if (evt.keyCode == KeyCode.Space && _searchProvider != null)
+            {
+                var screenPos = GUIUtility.GUIToScreenPoint(Event.current?.mousePosition ?? Vector2.zero);
+                SearchWindow.Open(new SearchWindowContext(screenPos), _searchProvider);
+                evt.StopPropagation();
+            }
+        }
+
+        // ── Graph view change ─────────────────────────────────────────────────
+
+        private GraphViewChange OnGraphViewChanged(GraphViewChange change)
+        {
+            // Edges to create — forward as events, don't let GraphView add them
+            if (change.edgesToCreate != null && change.edgesToCreate.Count > 0)
+            {
+                foreach (var edge in change.edgesToCreate)
+                {
+                    var srcNode = edge.output?.node as AsmDefNode;
+                    var tgtNode = edge.input?.node as AsmDefNode;
+                    if (srcNode != null && tgtNode != null)
+                        EdgeAddRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId);
+                }
+                change.edgesToCreate.Clear();
+            }
+
+            // Elements to remove — intercept AsmDefEdge removals.
+            //
+            // Two distinct cases:
+            //   • User-initiated deletion (_populatingGraph == false):
+            //       Remove the edge from elementsToRemove so Unity does NOT delete it visually.
+            //       Fire EdgeRemoveRequested; the command layer writes the .asmdef and triggers
+            //       a full Rebuild() which redraws the graph from scratch.
+            //   • Programmatic clear during Populate() (_populatingGraph == true):
+            //       Leave the edge in elementsToRemove so Unity deletes it from the visual graph.
+            //       Do NOT fire EdgeRemoveRequested — no .asmdef files should be touched.
+            if (change.elementsToRemove != null)
+            {
+                bool shift = Event.current?.shift ?? false;
+                for (int i = change.elementsToRemove.Count - 1; i >= 0; i--)
+                {
+                    if (change.elementsToRemove[i] is AsmDefEdge ae)
+                    {
+                        if (!_populatingGraph)
+                        {
+                            var srcNode = ae.output?.node as AsmDefNode;
+                            var tgtNode = ae.input?.node as AsmDefNode;
+                            if (srcNode != null && tgtNode != null)
+                                EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId, shift);
+                            // Pull edge out of the list — command layer owns the rebuild.
+                            change.elementsToRemove.RemoveAt(i);
+                        }
+                        // _populatingGraph == true: leave edge in list so Unity removes it visually.
+                    }
+                }
+            }
+
+            // Moved elements — debounce position updates.
+            // Skipped during programmatic clear (_populatingGraph) because DeleteElements can
+            // report deleted nodes in movedElements with stale/zeroed positions.
+            if (change.movedElements != null && !_populatingGraph)
+            {
+                foreach (var el in change.movedElements)
+                {
+                    if (el is AsmDefNode node)
+                        _pendingPositions[node.AsmDefId] = node.GetPosition().position;
+                }
+                _positionDebouncer.Bump();
+            }
+
+            return change;
+        }
+
+        // ── Position flush ────────────────────────────────────────────────────
+
+        private void FlushPendingPositions()
+        {
+            foreach (var kv in _pendingPositions)
+                NodePositionChanged?.Invoke(kv.Key, kv.Value);
+            _pendingPositions.Clear();
+        }
+    }
+}

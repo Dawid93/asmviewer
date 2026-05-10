@@ -1,0 +1,8 @@
+{
+  "name": "AssemblyArchitect.Editor",
+  "includePlatforms": [
+    "Editor"
+  ],
+  "references": [],
+  "autoReferenced": false
+}

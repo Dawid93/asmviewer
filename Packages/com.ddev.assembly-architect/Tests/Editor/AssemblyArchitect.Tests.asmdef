@@ -1,0 +1,14 @@
+{
+  "name": "AssemblyArchitect.Tests",
+  "includePlatforms": [
+    "Editor"
+  ],
+  "references": [
+    "AssemblyArchitect.Editor",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ]
+}

@@ -1,0 +1,38 @@
+/* Graph view container */
+#asmdef-graph {
+    flex-grow: 1;
+}
+
+/* Grid background */
+.gridBackground {
+    background-color: #1e1e1e;
+    --grid-background-color: #1e1e1e;
+    --line-color: rgba(193, 196, 192, 0.10);
+    --thick-line-color: rgba(193, 196, 192, 0.20);
+    --spacing: 22;
+}
+
+/* Default edge */
+.aa-edge {
+    --edge-width: 2;
+    --edge-color: #808080;
+}
+
+/* Cycle edge */
+.aa-edge-cycle {
+    --edge-color: #ff8c42;
+    --edge-width: 3;
+}
+
+/* Filtered / dimmed edge */
+.aa-edge-filtered {
+    opacity: 0.2;
+}
+
+/* Mini-map */
+.aa-minimap {
+    background-color: rgba(30, 30, 30, 0.85);
+    border-width: 1px;
+    border-color: #555555;
+    border-radius: 4px;
+}

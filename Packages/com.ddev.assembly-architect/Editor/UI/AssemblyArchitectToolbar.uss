@@ -1,0 +1,27 @@
+.aa-toolbar-root {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.aa-toolbar-btn {
+    flex-shrink: 0;
+}
+
+.aa-toolbar-spacer {
+    flex-grow: 1;
+}
+
+.aa-toolbar-search {
+    min-width: 180px;
+    max-width: 320px;
+    flex-grow: 1;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+.aa-toolbar-toggle {
+    flex-shrink: 0;
+    margin-left: 2px;
+    margin-right: 2px;
+}

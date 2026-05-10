@@ -52,6 +52,13 @@ namespace AssemblyArchitect.Editor.Graph
         private AsmDefSearchProvider _searchProvider;
         private MiniMap              _miniMap;
 
+        /// <summary>
+        /// True while <see cref="Clear"/> is executing <c>DeleteElements</c>.
+        /// Suppresses <see cref="EdgeRemoveRequested"/> so programmatic clearing during
+        /// <see cref="Populate"/> never triggers reference removal on disk.
+        /// </summary>
+        private bool _populatingGraph;
+
         // ── Constructor ───────────────────────────────────────────────────────
 
         public AsmDefGraphView()
@@ -152,10 +159,13 @@ namespace AssemblyArchitect.Editor.Graph
                 if (!_nodeElements.TryGetValue(edgeModel.SourceId, out var srcNode)) continue;
                 if (!_nodeElements.TryGetValue(edgeModel.TargetId, out var tgtNode)) continue;
 
+                // Convention: the referenced assembly (tgt) exposes its right (Output) socket;
+                // the referencing assembly (src) receives via its left (Input) socket.
+                // Arrow flows provider → consumer, matching "A.right → B.left = B references A".
                 var edge = new AsmDefEdge
                 {
-                    output = srcNode.OutputPort,
-                    input  = tgtNode.InputPort,
+                    output = tgtNode.OutputPort,
+                    input  = srcNode.InputPort,
                 };
                 edge.input.Connect(edge);
                 edge.output.Connect(edge);
@@ -302,9 +312,18 @@ namespace AssemblyArchitect.Editor.Graph
         /// <summary>Removes all nodes and edges from the graph (leaves MiniMap and background intact).</summary>
         public new void Clear()
         {
+            // Discard any pending drag-position updates so they cannot overwrite fresh layout
+            // positions that will be computed after this clear (e.g. on a layout switch).
+            _pendingPositions.Clear();
+
             // graphElements enumerates the content pane (nodes, edges) — not direct children like
             // the grid background or MiniMap which were added via Add(), not AddElement().
+            // DeleteElements fires graphViewChanged → OnGraphViewChanged with elementsToRemove,
+            // which would incorrectly trigger EdgeRemoveRequested for every edge. The flag
+            // suppresses that while we are doing a programmatic bulk-clear.
+            _populatingGraph = true;
             DeleteElements(graphElements.ToList());
+            _populatingGraph = false;
             _nodeElements.Clear();
         }
 
@@ -389,7 +408,16 @@ namespace AssemblyArchitect.Editor.Graph
                 change.edgesToCreate.Clear();
             }
 
-            // Elements to remove — intercept AsmDefEdge removals
+            // Elements to remove — intercept AsmDefEdge removals.
+            //
+            // Two distinct cases:
+            //   • User-initiated deletion (_populatingGraph == false):
+            //       Remove the edge from elementsToRemove so Unity does NOT delete it visually.
+            //       Fire EdgeRemoveRequested; the command layer writes the .asmdef and triggers
+            //       a full Rebuild() which redraws the graph from scratch.
+            //   • Programmatic clear during Populate() (_populatingGraph == true):
+            //       Leave the edge in elementsToRemove so Unity deletes it from the visual graph.
+            //       Do NOT fire EdgeRemoveRequested — no .asmdef files should be touched.
             if (change.elementsToRemove != null)
             {
                 bool shift = Event.current?.shift ?? false;
@@ -397,17 +425,24 @@ namespace AssemblyArchitect.Editor.Graph
                 {
                     if (change.elementsToRemove[i] is AsmDefEdge ae)
                     {
-                        var srcNode = ae.output?.node as AsmDefNode;
-                        var tgtNode = ae.input?.node as AsmDefNode;
-                        if (srcNode != null && tgtNode != null)
-                            EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId, shift);
-                        change.elementsToRemove.RemoveAt(i);
+                        if (!_populatingGraph)
+                        {
+                            var srcNode = ae.output?.node as AsmDefNode;
+                            var tgtNode = ae.input?.node as AsmDefNode;
+                            if (srcNode != null && tgtNode != null)
+                                EdgeRemoveRequested?.Invoke(srcNode.AsmDefId, tgtNode.AsmDefId, shift);
+                            // Pull edge out of the list — command layer owns the rebuild.
+                            change.elementsToRemove.RemoveAt(i);
+                        }
+                        // _populatingGraph == true: leave edge in list so Unity removes it visually.
                     }
                 }
             }
 
-            // Moved elements — debounce position updates
-            if (change.movedElements != null)
+            // Moved elements — debounce position updates.
+            // Skipped during programmatic clear (_populatingGraph) because DeleteElements can
+            // report deleted nodes in movedElements with stale/zeroed positions.
+            if (change.movedElements != null && !_populatingGraph)
             {
                 foreach (var el in change.movedElements)
                 {

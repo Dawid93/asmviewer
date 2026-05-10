@@ -20,6 +20,10 @@ namespace AssemblyArchitect.Tests.Editor.Integration
             // Fresh repo per test so dirty state doesn't leak between tests
             _repo   = new AsmDefRepository();
             _writer = new AsmDefWriter();
+
+            // Start each test with a clean undo stack so Undo.PerformUndo()
+            // in RemoveReference_ReversibleByUndo only undoes this test's operations.
+            Undo.ClearAll();
         }
 
         [TearDown]

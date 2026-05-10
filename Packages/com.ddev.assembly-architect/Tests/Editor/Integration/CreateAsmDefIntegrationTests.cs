@@ -68,9 +68,17 @@ namespace AssemblyArchitect.Tests.Editor.Integration
 
             cmd.Execute(args);
 
+            // After creation the command writes a GUID-based reference ("GUID:xxx") to the parent.
+            // Resolve the child's GUID from the repository so we can accept either form.
             _repo.NotifyChanged();
+            var childData    = _repo.FindByName("AUTOREF_Child");
+            var childGuidRef = childData != null && !string.IsNullOrEmpty(childData.Guid)
+                ? "GUID:" + childData.Guid
+                : null;
+
             var reloaded = ReadAsmDef(parent.AssetPath);
-            bool hasRef  = reloaded.References.Any(r => r.Contains("AUTOREF_Child"));
+            bool hasRef  = reloaded.References.Any(r =>
+                r == "AUTOREF_Child" || (childGuidRef != null && r == childGuidRef));
             Assert.IsTrue(hasRef, "Parent should reference the newly created child assembly");
         }
 

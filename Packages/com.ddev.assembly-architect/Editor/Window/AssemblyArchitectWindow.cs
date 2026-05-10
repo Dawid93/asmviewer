@@ -263,8 +263,11 @@ namespace AssemblyArchitect.Editor.Window
                 lastSelectedNodeId = id;
                 _inspector?.ShowFor(id);
             };
-            _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(src, tgt);
-            _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(src, tgt, force);
+            // EdgeAddRequested fires (outputNode, inputNode). With the provider→consumer arrow
+            // convention, outputNode is the referenced assembly and inputNode is the referencing one,
+            // so the referencing assembly (tgt/inputNode) should receive outputNode (src) as its reference.
+            _graphView.EdgeAddRequested    += (src, tgt) => _addRefCmd.Execute(tgt, src);
+            _graphView.EdgeRemoveRequested += (src, tgt, force) => _removeRefCmd.Execute(tgt, src, force);
             _graphView.NodePositionChanged += (id, pos) =>
             {
                 _positions[id] = pos;
@@ -297,6 +300,11 @@ namespace AssemblyArchitect.Editor.Window
                 _currentLayout = kind;
                 _positions.Clear();
                 Rebuild();
+                // After a layout switch the new positions are centred around (0,0) while
+                // the old viewport may be panned far away.  Schedule FrameAll on the next
+                // editor tick (after Unity resolves element positions) so the user sees the
+                // freshly laid-out graph immediately without having to scroll to find it.
+                _graphView?.schedule.Execute(() => _graphView.FrameAll());
             };
             _toolbar.SaveLayoutRequested   += () =>
             {
